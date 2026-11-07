@@ -7,7 +7,7 @@ import { youtubeThumb } from '@/lib/ranking';
 import { photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
 
-import { Card, Chip, Icon, Stars, T } from './ui';
+import { Card, Chip, Icon, T } from './ui';
 
 export function RecipeThumb({ recipe, size = 84 }: { recipe: Pick<RecipeWithStats, 'photo_path' | 'video_url' | 'image_url'>; size?: number }) {
   const uri = photoUrl(recipe.photo_path) ?? recipe.image_url ?? youtubeThumb(recipe.video_url);
@@ -27,58 +27,78 @@ export function RecipeThumb({ recipe, size = 84 }: { recipe: Pick<RecipeWithStat
   );
 }
 
+/** "Rich meat sauce over spaghetti. (Italian)" -> "Italian" */
+export function recipeCuisine(description: string): string | null {
+  return description.match(/\(([^()]+)\)\s*$/)?.[1] ?? null;
+}
+
+/** Description without the trailing "(Cuisine)". */
+function cleanDescription(description: string): string {
+  return description.replace(/\s*\([^()]+\)\s*$/, '');
+}
+
+/** Well liked by the group: an average of 4 stars or more. */
+export function isFavourite(recipe: RecipeWithStats): boolean {
+  return recipe.stats.rating_count > 0 && recipe.stats.avg_score >= 4;
+}
+
 export function RecipeCard({
   recipe,
   pantry,
-  rank,
   onPress,
+  large = false,
 }: {
   recipe: RecipeWithStats;
   pantry: string[];
-  rank?: number;
   onPress: () => void;
+  /** Bigger photo and text, for computers. */
+  large?: boolean;
 }) {
   const missing = missingIngredients(pantry, recipe.ingredients);
   const total = recipe.ingredients.length;
   const ready = total > 0 && missing.length === 0;
+  const cuisine = recipeCuisine(recipe.description);
+  const metaText = large ? styles.metaLarge : undefined;
 
   return (
-    <Card onPress={onPress} style={styles.card}>
-      <RecipeThumb recipe={recipe} />
-      <View style={styles.body}>
+    <Card onPress={onPress} style={[styles.card, large && styles.cardLarge]}>
+      <RecipeThumb recipe={recipe} size={large ? 150 : 84} />
+      <View style={[styles.body, large && { gap: 10 }]}>
         <View style={styles.titleRow}>
-          {rank !== undefined && (
-            <View style={[styles.rank, rank <= 3 && styles.rankTop]}>
-              <T variant="small" style={[styles.rankText, rank <= 3 && { color: Colors.onPrimary }]}>
-                {rank}
+          <T variant="subheading" numberOfLines={2} style={[{ flexShrink: 1 }, large && styles.titleLarge]}>
+            {recipe.title}
+          </T>
+          {isFavourite(recipe) && (
+            <View accessibilityLabel={`Rated ${recipe.stats.avg_score.toFixed(1)} stars`} style={styles.star}>
+              <Icon name="star" size={large ? 20 : 16} color={Colors.star} />
+            </View>
+          )}
+        </View>
+
+        {large && !!recipe.description && (
+          <T variant="small" numberOfLines={2} style={styles.descriptionLarge}>
+            {cleanDescription(recipe.description)}
+          </T>
+        )}
+
+        <View style={styles.metaRow}>
+          {cuisine && (
+            <T variant="small" style={metaText}>
+              {cuisine}
+            </T>
+          )}
+          {!!recipe.total_minutes && (
+            <View style={styles.meta}>
+              <Icon name="time-outline" size={large ? 16 : 13} color={Colors.textMuted} />
+              <T variant="small" style={metaText}>
+                {recipe.total_minutes} min
               </T>
             </View>
           )}
-          <T variant="subheading" numberOfLines={2} style={{ flex: 1 }}>
-            {recipe.title}
-          </T>
-        </View>
-
-        <View style={styles.metaRow}>
-          {recipe.stats.rating_count > 0 ? (
-            <>
-              <Stars value={recipe.stats.avg_score} size={13} />
-              <T variant="small">
-                {recipe.stats.avg_score.toFixed(1)} ({recipe.stats.rating_count})
-              </T>
-            </>
-          ) : (
-            <T variant="small">No ratings yet</T>
-          )}
-          {!!recipe.total_minutes && (
-            <T variant="small" style={{ color: Colors.textMuted }}>
-              · {recipe.total_minutes} min
-            </T>
-          )}
           {recipe.votes > 0 && (
-            <View style={styles.votes}>
-              <Icon name={recipe.myVote ? 'thumbs-up' : 'thumbs-up-outline'} size={12} color={Colors.primaryStrong} />
-              <T variant="small" style={{ color: Colors.primaryStrong, fontWeight: '600' }}>
+            <View style={styles.meta}>
+              <Icon name={recipe.myVote ? 'thumbs-up' : 'thumbs-up-outline'} size={large ? 15 : 12} color={Colors.primaryStrong} />
+              <T variant="small" style={[{ color: Colors.primaryStrong, fontWeight: '600' }, metaText]}>
                 {recipe.votes}
               </T>
             </View>
@@ -92,9 +112,9 @@ export function RecipeCard({
             ) : (
               <Chip
                 label={`Need ${missing.length} of ${total}: ${missing
-                  .slice(0, 2)
+                  .slice(0, large ? 4 : 2)
                   .map((m) => m.name)
-                  .join(', ')}${missing.length > 2 ? '…' : ''}`}
+                  .join(', ')}${missing.length > (large ? 4 : 2) ? '…' : ''}`}
                 tone="warning"
                 icon="cart-outline"
               />
@@ -108,6 +128,7 @@ export function RecipeCard({
 
 const styles = StyleSheet.create({
   card: { flexDirection: 'row', gap: Spacing.md, padding: Spacing.md },
+  cardLarge: { gap: Spacing.xl, padding: Spacing.lg, borderRadius: Radius.lg },
   thumb: {
     borderRadius: Radius.md,
     backgroundColor: Colors.primarySoft,
@@ -127,22 +148,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { flex: 1, gap: 6, justifyContent: 'center' },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-  rank: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -1,
-  },
-  rankTop: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  rankText: { fontWeight: '700', color: Colors.textSecondary, lineHeight: 16 },
-  votes: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 4 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  titleLarge: { fontSize: 22, lineHeight: 28, letterSpacing: -0.2 },
+  star: { marginTop: 1 },
+  descriptionLarge: { fontSize: 15, lineHeight: 21 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaLarge: { fontSize: 15 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 });
