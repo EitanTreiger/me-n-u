@@ -10,9 +10,9 @@ export function useLayout() {
   return {
     width,
     wide,
-    /** Max width for page content. */
-    contentWidth: wide ? 1200 : 720,
-    /** Columns for card grids: two on computers, one on phones. */
+    /** Max width for page content (a comfortable reading width on big screens). */
+    contentWidth: wide ? 1000 : 720,
+    /** Columns for the menu's day grid: two on computers, one on phones. */
     columns: wide ? 2 : 1,
   };
 }

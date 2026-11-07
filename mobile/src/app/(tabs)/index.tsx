@@ -40,7 +40,7 @@ function RecipesList() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('top');
   const [tags, setTags] = useState<string[]>([]);
-  const { columns } = useLayout();
+  const { wide } = useLayout();
   const userId = useAuth().session?.user.id;
 
   const groupId = active!.id;
@@ -62,15 +62,14 @@ function RecipesList() {
 
   const visible = useMemo(() => {
     if (!recipes) return [];
-    const q = query.trim().toLowerCase();
+    // Every word must match the title, cuisine/description, an ingredient or a
+    // dietary tag, so "chicken", "italian" or "italian chicken" all work.
+    const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     let list = recipes.filter((r) => {
       if (tags.length && !tags.every((t) => r.dietary_tags.includes(t))) return false;
-      if (!q) return true;
-      return (
-        r.title.toLowerCase().includes(q) ||
-        r.ingredients.some((i) => i.name.toLowerCase().includes(q)) ||
-        r.dietary_tags.some((t) => t.includes(q))
-      );
+      if (!words.length) return true;
+      const haystack = [r.title, r.description, ...r.ingredients.map((i) => i.name), ...r.dietary_tags].join(' ').toLowerCase();
+      return words.every((w) => haystack.includes(w));
     });
     if (sort === 'top') {
       list = [...list].sort((a, b) => consensusScore(b.stats) - consensusScore(a.stats) || b.stats.rating_count - a.stats.rating_count);
@@ -116,7 +115,7 @@ function RecipesList() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search recipes or ingredients"
+          placeholder="Search dishes, ingredients or cuisines (e.g. chicken, italian)"
           placeholderTextColor={Colors.textMuted}
           style={styles.searchInput}
           returnKeyType="search"
@@ -170,12 +169,12 @@ function RecipesList() {
         )
       ) : (
         <View style={styles.list}>
-          {visible.map((r, i) => (
-            <View key={r.id} style={{ width: columns > 1 ? `${100 / columns - 1.5}%` : '100%' }}>
+          {visible.map((r) => (
+            <View key={r.id} style={{ width: '100%' }}>
               <RecipeCard
                 recipe={r}
                 pantry={pantry}
-                rank={(sort === 'top' && r.stats.rating_count > 0) || sort === 'votes' ? i + 1 : undefined}
+                large={wide}
                 onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: r.id } })}
               />
             </View>
