@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { Loading } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/providers/auth';
-import { GroupsProvider } from '@/providers/groups';
+import { GroupsProvider, useGroups } from '@/providers/groups';
 import { PantryProvider } from '@/providers/pantry';
 
 SplashScreen.preventAutoHideAsync();
@@ -25,12 +25,15 @@ const theme = {
 
 function RootNavigator() {
   const { session, loading } = useAuth();
+  const groups = useGroups();
+  // Signed in but not in any community yet: the only screen is create-or-join.
+  const inCommunity = groups.memberships.length > 0;
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
   }, [loading]);
 
-  if (loading) return <Loading />;
+  if (loading || (session && groups.loading)) return <Loading />;
 
   return (
     <Stack
@@ -42,7 +45,10 @@ function RootNavigator() {
         headerBackButtonDisplayMode: 'minimal',
         contentStyle: { backgroundColor: Colors.background },
       }}>
-      <Stack.Protected guard={!!session}>
+      <Stack.Protected guard={!!session && !inCommunity}>
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!!session && inCommunity}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/[id]" options={{ title: '' }} />
         <Stack.Screen name="recipe/new" options={{ title: 'New recipe', presentation: 'modal' }} />
