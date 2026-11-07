@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { normalizeName, normalizeUnit, parseIngredientLine } from '@/lib/ingredients';
-import { convertWeight, groceryUnit, isStaple } from '@/lib/pantry-units';
+import { convertWeight, groceryUnit, isHardToMeasure, isMeasureUnit } from '@/lib/pantry-units';
 import { supabase } from '@/lib/supabase';
 import type { Ingredient, PantryItem } from '@/lib/types';
 
@@ -36,11 +36,18 @@ async function fetchPantry(groupId: string | undefined): Promise<PantryItem[]> {
   return (data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) || 0 }));
 }
 
-/** Staples have no amount; everything else gets the grocery-store unit by default. */
+/**
+ * Hard-to-measure items (salt, spices, oils, sauces...) are just "in stock"
+ * unless a real measurement is given ("2 tbsp olive oil" keeps 2 tbsp).
+ * Everything else gets the grocery-store unit by default.
+ */
 function normalizeEntry(e: Ingredient): { name: string; quantity: number; unit: string } {
   const name = e.name.split(',')[0].trim().toLowerCase();
-  if (isStaple(name)) return { name, quantity: 0, unit: '' };
-  const unit = normalizeUnit(e.unit ?? '') || groceryUnit(name);
+  const givenUnit = normalizeUnit(e.unit ?? '');
+  if (isHardToMeasure(name)) {
+    return e.quantity > 0 && isMeasureUnit(givenUnit) ? { name, quantity: e.quantity, unit: givenUnit } : { name, quantity: 0, unit: '' };
+  }
+  const unit = givenUnit || groceryUnit(name);
   // No number given ("eggs") counts as 1.
   return { name, quantity: e.quantity || 1, unit };
 }

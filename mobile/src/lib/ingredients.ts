@@ -69,7 +69,8 @@ export function pantryUsage(
     const item = pantry.find((p) => pantryHas([p.name], ing.name));
     if (!item || uses.some((u) => u.pantryId === item.id) || ALWAYS_ON_HAND.has(normalizeName(ing.name))) continue;
     // Salt, spices and other staples are never used up.
-    if (isStaple(item.name) || isStaple(ing.name)) continue;
+    // Staples and items without an amount ("in stock") are never used up.
+    if (isStaple(item.name) || isStaple(ing.name) || item.quantity <= 0) continue;
     const pantryUnit = normalizeUnit(item.unit);
     const used =
       pantryUnit === normalizeUnit(ing.unit) ? ing.quantity : convertWeight(ing.quantity, normalizeUnit(ing.unit), pantryUnit);
