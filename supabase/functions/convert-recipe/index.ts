@@ -103,7 +103,8 @@ Only add a dietary tag when the ingredient list clearly supports it.
 If the input is a photo of a finished dish with no written recipe, set is_recipe to true only if you can confidently identify the dish, and give a simple, standard home version of it.`;
 
 const RECEIPT_PROMPT = `This is a photo of a grocery receipt or a shopping list. List the food and cooking items on it, with how many or how much of each.
-Turn store abbreviations into plain names ("GRN ONION" -> "green onions", "LG EGGS 12CT" -> 12 eggs). Skip non-food items, bags, taxes, totals and discounts.
+Turn store abbreviations into plain names ("GRN ONION" -> "green onions", "LG EGGS 12CT" -> 12 eggs).
+Only include food and cooking ingredients (things you would eat, drink or cook with). Leave out everything else: cleaning and household products, paper towels, toilet paper, toiletries, medicine, vitamins, pet food, alcohol, tobacco, gift cards, bags, deposits, taxes, totals, discounts and coupons. If unsure whether something is food, leave it out.
 Use real kitchen measurements only (never "bag", "box", "bunch" or "head"): meat, fish, produce sold by weight, pasta and cheese in lb (convert kg or g to lb); rice, flour, sugar, oats, lentils and other dry goods in cups (about 2.5 cups per lb of rice, 3.5 cups per lb of flour); canned goods by the can; eggs and other items you count as a plain number with an empty unit.
 For salt, spices, dried herbs, oils, vinegar, sauces, condiments, milk and other hard-to-measure items use quantity 0 and an empty unit: they are tracked as in stock or not.`;
 
