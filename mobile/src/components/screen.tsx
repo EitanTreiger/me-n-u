@@ -5,6 +5,7 @@ import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 import { Colors, Spacing } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
 
+import { LogoMenu } from './logo-menu';
 import { T } from './ui';
 
 /** Scrollable page with a large title, centred on wide screens. */
@@ -32,6 +33,7 @@ export function Screen({
   const { contentWidth } = useLayout();
   const header = title ? (
     <View style={styles.header}>
+      <LogoMenu />
       <View style={{ flex: 1, gap: 2 }}>
         <T variant="title">{title}</T>
         {typeof subtitle === 'string' ? <T variant="small">{subtitle}</T> : subtitle}

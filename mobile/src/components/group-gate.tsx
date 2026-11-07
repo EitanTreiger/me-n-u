@@ -22,7 +22,7 @@ export function GroupGate({ title, children }: { title: string; children: ReactN
   return <>{children}</>;
 }
 
-function CommunitySetup({ title }: { title: string }) {
+export function CommunitySetup({ title }: { title: string }) {
   const { displayName } = useAuth();
   const { createGroup, joinGroup } = useGroups();
   const { wide } = useLayout();

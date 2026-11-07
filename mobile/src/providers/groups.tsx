@@ -43,6 +43,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Which signed-in user the memberships were loaded for, so a fresh sign-in
+  // counts as "loading" until their communities arrive.
+  const [loadedFor, setLoadedFor] = useState<string | undefined | null>(null);
 
   const apply = useCallback((result: { rows: Membership[]; stored: string | null } | null) => {
     if (result) {
@@ -62,7 +65,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
     fetchMemberships(userId).then((result) => {
-      if (alive) apply(result);
+      if (!alive) return;
+      apply(result);
+      setLoadedFor(userId);
     });
     return () => {
       alive = false;
@@ -80,7 +85,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       memberships,
       active,
       isAdmin: active?.role === 'admin',
-      loading,
+      loading: loading || loadedFor !== userId,
       setActive,
       refresh,
       createGroup: async (name, description) => {
@@ -108,7 +113,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     };
-  }, [memberships, activeId, loading, setActive, refresh, userId]);
+  }, [memberships, activeId, loading, loadedFor, setActive, refresh, userId]);
 
   return <GroupsContext.Provider value={value}>{children}</GroupsContext.Provider>;
 }
