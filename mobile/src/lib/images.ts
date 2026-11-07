@@ -75,7 +75,8 @@ async function fromWikipediaTitle(title: string): Promise<string | null> {
     if (!res.ok) continue;
     const data = (await res.json()) as { type?: string; thumbnail?: { source: string } };
     if (data.type === 'standard' && data.thumbnail?.source && !/\.svg/i.test(data.thumbnail.source)) {
-      return data.thumbnail.source.replace(/\/\d+px-/, '/800px-');
+      // Use Wikipedia's own thumbnail size: it rejects arbitrary widths.
+      return data.thumbnail.source;
     }
   }
   return null;
