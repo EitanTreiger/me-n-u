@@ -180,7 +180,7 @@ function GroceryList() {
           <Card style={styles.list}>
             {toBuy.length === 0 && extras.length === 0 && (
               <T variant="small" style={{ padding: Spacing.md }}>
-                Your pantry covers everything on the menu.
+                The pantry covers everything on the menu.
               </T>
             )}
             {toBuy.map((l, i) => (
@@ -223,7 +223,7 @@ function GroceryList() {
 
           {inPantry.length > 0 && (
             <>
-              <SectionHeader title={`Already in your pantry · ${inPantry.length}`} />
+              <SectionHeader title={`Already in the pantry · ${inPantry.length}`} />
               <Card style={[styles.list, styles.muted]}>
                 {inPantry.map((l, i) => (
                   <View key={l.key}>

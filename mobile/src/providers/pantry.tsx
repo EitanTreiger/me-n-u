@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { normalizeName, normalizeUnit, parseIngredientLine } from '@/lib/ingredients';
+import { convertWeight, groceryUnit, isStaple } from '@/lib/pantry-units';
 import { supabase } from '@/lib/supabase';
 import type { Ingredient, PantryItem } from '@/lib/types';
 
-import { useAuth } from './auth';
+import { useGroups } from './groups';
 
 /** A pantry change after cooking: new amount, or null to remove the item. */
 export type PantryChange = { id: string; quantity: number | null };
@@ -24,25 +25,39 @@ type PantryState = {
 
 const PantryContext = createContext<PantryState | null>(null);
 
-async function fetchPantry(userId: string | undefined): Promise<PantryItem[]> {
-  if (!userId) return [];
-  const { data } = await supabase.from('pantry_items').select('id, name, quantity, unit, created_at').order('name');
+/** The community's shared pantry. */
+async function fetchPantry(groupId: string | undefined): Promise<PantryItem[]> {
+  if (!groupId) return [];
+  const { data } = await supabase
+    .from('pantry_items')
+    .select('id, name, quantity, unit, created_at')
+    .eq('group_id', groupId)
+    .order('name');
   return (data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) || 0 }));
 }
 
+/** Staples have no amount; everything else gets the grocery-store unit by default. */
+function normalizeEntry(e: Ingredient): { name: string; quantity: number; unit: string } {
+  const name = e.name.split(',')[0].trim().toLowerCase();
+  if (isStaple(name)) return { name, quantity: 0, unit: '' };
+  const unit = normalizeUnit(e.unit ?? '') || groceryUnit(name);
+  // No number given ("eggs") counts as 1.
+  return { name, quantity: e.quantity || 1, unit };
+}
+
 export function PantryProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
-  const userId = session?.user.id;
+  // The pantry belongs to the active community, shared by all its members.
+  const groupId = useGroups().active?.id;
   const [items, setItems] = useState<PantryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setItems(await fetchPantry(userId));
-  }, [userId]);
+    setItems(await fetchPantry(groupId));
+  }, [groupId]);
 
   useEffect(() => {
     let alive = true;
-    fetchPantry(userId).then((rows) => {
+    fetchPantry(groupId).then((rows) => {
       if (!alive) return;
       setItems(rows);
       setLoading(false);
@@ -50,7 +65,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [groupId]);
 
   const value = useMemo<PantryState>(
     () => ({
@@ -62,8 +77,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
         const parsed = entries
           .map((e) => (typeof e === 'string' ? parseIngredientLine(e) : e))
           .filter((e): e is Ingredient => !!e && !!e.name.trim())
-          // No number given ("eggs") counts as 1.
-          .map((e) => ({ name: e.name.split(',')[0].trim().toLowerCase(), quantity: e.quantity || 1, unit: normalizeUnit(e.unit ?? '') }));
+          .map(normalizeEntry);
+        if (!groupId) return;
         const inserts: { name: string; quantity: number; unit: string }[] = [];
         const updates: { id: string; quantity: number; unit: string }[] = [];
         for (const e of parsed) {
@@ -71,13 +86,15 @@ export function PantryProvider({ children }: { children: ReactNode }) {
           const saved = items.find((i) => normalizeName(i.name) === key);
           const pending = inserts.find((i) => normalizeName(i.name) === key);
           if (saved) {
-            // Same item: add the amounts when they're in the same unit.
+            // Same item: add the amounts when they're in the same unit
+            // (converting between weights, e.g. 500 g onto 2 lb).
             if (!e.quantity) continue;
-            const sameUnit = normalizeUnit(saved.unit) === e.unit;
+            const savedUnit = normalizeUnit(saved.unit);
+            const extra = savedUnit === e.unit ? e.quantity : convertWeight(e.quantity, e.unit, savedUnit);
             updates.push({
               id: saved.id,
-              quantity: saved.quantity && sameUnit ? saved.quantity + e.quantity : saved.quantity || e.quantity,
-              unit: saved.quantity && !sameUnit ? saved.unit : e.unit,
+              quantity: saved.quantity && extra !== null ? Math.round((saved.quantity + extra) * 100) / 100 : saved.quantity || e.quantity,
+              unit: saved.quantity ? saved.unit : e.unit,
             });
           } else if (pending) {
             if (pending.unit === e.unit) pending.quantity += e.quantity;
@@ -86,7 +103,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
           }
         }
         if (inserts.length) {
-          const { error } = await supabase.from('pantry_items').insert(inserts);
+          const { error } = await supabase.from('pantry_items').insert(inserts.map((i) => ({ ...i, group_id: groupId })));
           if (error) throw error;
         }
         for (const u of updates) {
@@ -124,7 +141,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     }),
-    [items, loading, refresh],
+    [items, loading, refresh, groupId],
   );
 
   return <PantryContext.Provider value={value}>{children}</PantryContext.Provider>;
