@@ -20,7 +20,6 @@ import { youtubeThumb } from '@/lib/ranking';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
 import { formatTimestamp, youtubeAt } from '@/lib/youtube';
-import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 import { usePantry } from '@/providers/pantry';
 
@@ -37,7 +36,6 @@ function confirm(title: string, message: string, onYes: () => void) {
 
 export default function RecipeDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { session } = useAuth();
   const { isAdmin } = useGroups();
   const pantry = usePantry();
   const { wide, contentWidth } = useLayout();
@@ -87,7 +85,8 @@ export default function RecipeDetail() {
   const factor = servingFactor(base, cookingFor);
   const ingredients = scaleIngredients(recipe.ingredients, factor);
   const missing = ingredients.filter((i) => !pantryHas(pantry.names, i.name));
-  const canDelete = recipe.author_id === session?.user.id || isAdmin;
+  // Only admins can delete (the database enforces this too).
+  const canDelete = isAdmin;
   const times = recipe.video_url && recipe.step_timestamps?.length === recipe.steps.length ? recipe.step_timestamps : null;
 
   async function refreshRecipe() {
@@ -401,14 +400,18 @@ export default function RecipeDetail() {
                   label="Delete recipe"
                   color={Colors.danger}
                   onPress={() =>
-                    confirm('Delete this recipe?', 'It will be removed for everyone in the group, including from menus.', async () => {
+                    confirm(
+                      `Delete "${recipe.title}"?`,
+                      'Are you sure? It will be removed for everyone in the community, including from weekly menus, ratings and votes. This cannot be undone.',
+                      async () => {
                       try {
                         await deleteRecipe(recipe.id);
                         router.back();
                       } catch (e) {
                         setError(friendlyError(e));
                       }
-                    })
+                      },
+                    )
                   }
                 />
               )

@@ -13,18 +13,20 @@ import { consensusScore } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
 import { useLayout } from '@/hooks/use-layout';
 import { DIETARY_TAGS, type RecipeWithStats } from '@/lib/types';
+import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 import { usePantry } from '@/providers/pantry';
 
-type Sort = 'top' | 'votes' | 'new' | 'ready';
+type Sort = 'top' | 'votes' | 'mine' | 'new' | 'ready';
 
 const SORTS: {
   key: Sort;
   label: string;
-  icon: 'trophy-outline' | 'thumbs-up-outline' | 'time-outline' | 'checkmark-circle-outline';
+  icon: 'trophy-outline' | 'thumbs-up-outline' | 'person-outline' | 'time-outline' | 'checkmark-circle-outline';
 }[] = [
   { key: 'top', label: 'Top rated', icon: 'trophy-outline' },
   { key: 'votes', label: 'Most votes', icon: 'thumbs-up-outline' },
+  { key: 'mine', label: 'My recipes', icon: 'person-outline' },
   { key: 'new', label: 'Newest', icon: 'time-outline' },
   { key: 'ready', label: 'Ready to cook', icon: 'checkmark-circle-outline' },
 ];
@@ -39,6 +41,7 @@ function RecipesList() {
   const [sort, setSort] = useState<Sort>('top');
   const [tags, setTags] = useState<string[]>([]);
   const { columns } = useLayout();
+  const userId = useAuth().session?.user.id;
 
   const groupId = active!.id;
 
@@ -71,6 +74,9 @@ function RecipesList() {
     });
     if (sort === 'top') {
       list = [...list].sort((a, b) => consensusScore(b.stats) - consensusScore(a.stats) || b.stats.rating_count - a.stats.rating_count);
+    } else if (sort === 'mine') {
+      // Recipes I shared, newest first.
+      list = list.filter((r) => r.author_id === userId);
     } else if (sort === 'votes') {
       // Recipes members want on the menu; unvoted ones drop out of this view.
       list = list.filter((r) => r.votes > 0).sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats));
@@ -82,7 +88,7 @@ function RecipesList() {
       );
     }
     return list;
-  }, [recipes, query, sort, tags, pantry]);
+  }, [recipes, query, sort, tags, pantry, userId]);
 
   const toggleTag = (t: string) => setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
@@ -146,7 +152,14 @@ function RecipesList() {
           action={<Button title="Add a recipe" icon="add" onPress={() => router.push('/recipe/new')} />}
         />
       ) : visible.length === 0 ? (
-        sort === 'votes' ? (
+        sort === 'mine' ? (
+          <EmptyState
+            icon="person-outline"
+            title="You haven't shared a recipe yet"
+            body="Recipes you add show up here."
+            action={<Button title="Add a recipe" icon="add" onPress={() => router.push('/recipe/new')} />}
+          />
+        ) : sort === 'votes' ? (
           <EmptyState
             icon="thumbs-up-outline"
             title="No votes yet"
