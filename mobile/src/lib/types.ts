@@ -54,6 +54,7 @@ export type MenuItem = {
   day: number;
   meal: Meal;
   recipe_id: string;
+  servings: number | null; // people this meal is for; null = as the recipe is written
   recipe?: Recipe | null;
 };
 

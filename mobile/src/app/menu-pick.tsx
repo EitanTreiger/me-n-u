@@ -1,17 +1,21 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { RecipeThumb } from '@/components/recipe-card';
-import { Button, Card, Chip, ErrorBanner, Icon, Loading, Stars, T } from '@/components/ui';
+import { Button, Card, Chip, ErrorBanner, Icon, Loading, Stars, Stepper, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { addMenuItem, listRecipes } from '@/lib/api';
+import { formatFactor, servingFactor } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
 import { MEALS, type Meal, type RecipeWithStats } from '@/lib/types';
 import { DAY_SHORT, weekStart } from '@/lib/week';
 import { useGroups } from '@/providers/groups';
+
+const PEOPLE_KEY = 'menuPeople';
 
 /**
  * Admin-only modal. Opened two ways:
@@ -19,7 +23,7 @@ import { useGroups } from '@/providers/groups';
  *  - from a recipe (recipeId given) -> pick the week, day and meal
  */
 export default function MenuPick() {
-  const params = useLocalSearchParams<{ week?: string; day?: string; meal?: Meal; recipeId?: string }>();
+  const params = useLocalSearchParams<{ week?: string; day?: string; meal?: Meal; recipeId?: string; people?: string }>();
   const { active, isAdmin } = useGroups();
   const [week, setWeek] = useState(params.week ?? weekStart());
   const [day, setDay] = useState<number>(params.day ? Number(params.day) : (new Date().getDay() + 6) % 7);
@@ -29,8 +33,24 @@ export default function MenuPick() {
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // How many people this meal is for. Starts from the recipe page's choice,
+  // else the number this admin last used for the group.
+  const [people, setPeople] = useState<number | null>(params.people ? Number(params.people) : null);
 
   const slotFixed = params.day !== undefined && params.meal !== undefined;
+
+  useEffect(() => {
+    if (!active || params.people) return;
+    let alive = true;
+    AsyncStorage.getItem(`${PEOPLE_KEY}:${active.id}`)
+      .then((v) => {
+        if (alive && v && Number(v) > 0) setPeople((p) => p ?? Number(v));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [active, params.people]);
 
   useEffect(() => {
     if (!active) return;
@@ -52,19 +72,21 @@ export default function MenuPick() {
     );
   }
 
+  const selectedRecipe = recipes?.find((r) => r.id === recipeId);
+  const cookingFor = people ?? selectedRecipe?.servings ?? 4;
+
   async function save() {
     if (!active || !recipeId) return;
     setSaving(true);
     try {
-      await addMenuItem(active.id, week, day, meal, recipeId);
+      await addMenuItem(active.id, week, day, meal, recipeId, cookingFor);
+      AsyncStorage.setItem(`${PEOPLE_KEY}:${active.id}`, String(cookingFor)).catch(() => {});
       router.back();
     } catch (e) {
       setError(friendlyError(e));
       setSaving(false);
     }
   }
-
-  const selectedRecipe = recipes?.find((r) => r.id === recipeId);
 
   return (
     <View style={{ flex: 1 }}>
@@ -152,6 +174,21 @@ export default function MenuPick() {
         <ErrorBanner message={error} />
       </ScrollView>
       <View style={styles.footer}>
+        <View style={styles.peopleRow}>
+          <View style={{ flex: 1 }}>
+            <T variant="subheading">Cooking for</T>
+            <T variant="small">
+              {selectedRecipe?.servings
+                ? `Recipe serves ${selectedRecipe.servings}${
+                    cookingFor !== selectedRecipe.servings
+                      ? ` · ${formatFactor(servingFactor(selectedRecipe.servings, cookingFor))}`
+                      : ''
+                  }`
+                : 'People at this meal'}
+            </T>
+          </View>
+          <Stepper value={cookingFor} onChange={setPeople} label="people" />
+        </View>
         <Button title="Add to menu" icon="calendar-outline" onPress={save} loading={saving} disabled={!recipeId} />
       </View>
     </View>
@@ -161,6 +198,7 @@ export default function MenuPick() {
 const styles = StyleSheet.create({
   content: { padding: Spacing.lg, paddingBottom: 120, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  peopleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md },
   selected: { borderColor: Colors.primaryStrong, backgroundColor: Colors.primarySoft },
   search: {

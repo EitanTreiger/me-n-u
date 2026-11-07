@@ -15,15 +15,23 @@ import {
   setChecked,
   type GroceryExtra,
 } from '@/lib/api';
-import { aggregateIngredients, displayUnit, formatQuantity, pantryHas, type GroceryLine } from '@/lib/ingredients';
+import {
+  aggregateIngredients,
+  formatIngredient,
+  pantryHas,
+  scaleIngredients,
+  servingFactor,
+  tidyAmount,
+  type GroceryLine,
+} from '@/lib/ingredients';
 import { friendlyError } from '@/lib/supabase';
 import type { MenuItem } from '@/lib/types';
 import { weekLabel, weekStart } from '@/lib/week';
 import { useGroups } from '@/providers/groups';
 import { usePantry } from '@/providers/pantry';
 
-function lineText(l: { name: string; quantity: number; unit: string }) {
-  return [formatQuantity(l.quantity), displayUnit(l.unit, l.quantity), l.name].filter(Boolean).join(' ');
+function lineText(line: { name: string; quantity: number; unit: string }) {
+  return formatIngredient(tidyAmount(line));
 }
 
 function GroceryList() {
@@ -67,7 +75,16 @@ function GroceryList() {
   const lines = useMemo(
     () =>
       aggregateIngredients(
-        (menu ?? []).filter((m) => m.recipe).map((m) => ({ recipeTitle: m.recipe!.title, ingredients: m.recipe!.ingredients })),
+        (menu ?? [])
+          .filter((m) => m.recipe)
+          .map((m) => ({
+            recipeTitle: m.recipe!.title,
+            // Scale each planned meal to the number of people it's for.
+            // Keep raw amounts here; the combined total is rounded once for display.
+            ingredients: scaleIngredients(m.recipe!.ingredients, servingFactor(m.recipe!.servings, m.servings), {
+              tidy: false,
+            }),
+          })),
       ),
     [menu],
   );

@@ -3,10 +3,10 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, SectionHeader, Stars, T } from '@/components/ui';
+import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, SectionHeader, Stars, Stepper, T } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { deleteRecipe, getRecipe, rateRecipe } from '@/lib/api';
-import { formatIngredient, pantryHas } from '@/lib/ingredients';
+import { formatFactor, formatIngredient, pantryHas, scaleIngredients, servingFactor } from '@/lib/ingredients';
 import { youtubeThumb } from '@/lib/ranking';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
@@ -35,6 +35,10 @@ export default function RecipeDetail() {
   const [timesOnMenu, setTimesOnMenu] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // Serving scaler. `people` = how many we're cooking for; `baseGuess` is used
+  // only when the recipe doesn't say how many it serves.
+  const [people, setPeople] = useState<number | null>(null);
+  const [baseGuess, setBaseGuess] = useState(4);
 
   useEffect(() => {
     let alive = true;
@@ -61,7 +65,11 @@ export default function RecipeDetail() {
   if (!recipe) return <Loading />;
 
   const image = photoUrl(recipe.photo_path) ?? youtubeThumb(recipe.video_url);
-  const missing = recipe.ingredients.filter((i) => !pantryHas(pantry.names, i.name));
+  const base = recipe.servings ?? baseGuess;
+  const cookingFor = people ?? base;
+  const factor = servingFactor(base, cookingFor);
+  const ingredients = scaleIngredients(recipe.ingredients, factor);
+  const missing = ingredients.filter((i) => !pantryHas(pantry.names, i.name));
   const canDelete = recipe.author_id === session?.user.id || isAdmin;
 
   async function rate(score: number) {
@@ -184,13 +192,47 @@ export default function RecipeDetail() {
             title="Add to the weekly menu"
             icon="calendar-outline"
             variant="secondary"
-            onPress={() => router.push({ pathname: '/menu-pick', params: { recipeId: recipe.id } })}
+            onPress={() =>
+              router.push({ pathname: '/menu-pick', params: { recipeId: recipe.id, people: String(cookingFor) } })
+            }
             style={{ marginTop: Spacing.md }}
           />
         )}
 
+        <Card style={styles.scaler}>
+          <View style={styles.scalerRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <T variant="subheading">Cooking for</T>
+              <T variant="small">
+                {recipe.servings
+                  ? `Recipe serves ${recipe.servings}`
+                  : "Recipe doesn't say how many it serves"}
+              </T>
+            </View>
+            <Stepper value={cookingFor} onChange={setPeople} label="people" />
+          </View>
+          {!recipe.servings && (
+            <View style={styles.scalerRow}>
+              <T variant="small" style={{ flex: 1 }}>
+                Best guess: one batch serves
+              </T>
+              <Stepper value={baseGuess} onChange={setBaseGuess} label="servings per batch" max={100} />
+            </View>
+          )}
+          {factor !== 1 && (
+            <View style={styles.scalerRow}>
+              <Chip label={`${formatFactor(factor)} the recipe`} selected />
+              <Pressable onPress={() => setPeople(null)} hitSlop={8} accessibilityRole="button">
+                <T variant="small" style={styles.resetLink}>
+                  Reset to {base}
+                </T>
+              </Pressable>
+            </View>
+          )}
+        </Card>
+
         <SectionHeader
-          title={`Ingredients · ${recipe.ingredients.length}`}
+          title={`Ingredients · ${recipe.ingredients.length}${factor !== 1 ? ` · for ${cookingFor}` : ''}`}
           action={
             missing.length > 0 ? (
               <Chip label={`${missing.length} to buy`} tone="warning" icon="cart-outline" />
@@ -200,7 +242,7 @@ export default function RecipeDetail() {
           }
         />
         <Card style={{ paddingVertical: Spacing.xs }}>
-          {recipe.ingredients.map((ing, i) => {
+          {ingredients.map((ing, i) => {
             const have = pantryHas(pantry.names, ing.name);
             return (
               <View key={`${ing.name}-${i}`}>
@@ -303,6 +345,9 @@ const styles = StyleSheet.create({
   ratingCard: { marginTop: Spacing.lg, marginBottom: Spacing.md },
   ratingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  scaler: { gap: Spacing.md, marginTop: Spacing.lg },
+  scalerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
+  resetLink: { color: Colors.primaryStrong, fontWeight: '600' },
   ingredient: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
   step: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
   stepNumber: {
