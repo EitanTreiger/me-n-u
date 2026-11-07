@@ -9,8 +9,8 @@ import type { RecipeWithStats } from '@/lib/types';
 
 import { Card, Chip, Icon, Stars, T } from './ui';
 
-export function RecipeThumb({ recipe, size = 84 }: { recipe: Pick<RecipeWithStats, 'photo_path' | 'video_url'>; size?: number }) {
-  const uri = photoUrl(recipe.photo_path) ?? youtubeThumb(recipe.video_url);
+export function RecipeThumb({ recipe, size = 84 }: { recipe: Pick<RecipeWithStats, 'photo_path' | 'video_url' | 'image_url'>; size?: number }) {
+  const uri = photoUrl(recipe.photo_path) ?? recipe.image_url ?? youtubeThumb(recipe.video_url);
   return (
     <View style={[styles.thumb, { width: size, height: size }]}>
       {uri ? (

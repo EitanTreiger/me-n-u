@@ -7,6 +7,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 import { Button, Card, Chip, ErrorBanner, Field, Icon, IconButton, T, type IconName } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { convertPhoto, convertYoutube, createRecipe, uploadPhoto } from '@/lib/api';
+import { findRecipeImage } from '@/lib/images';
 import { formatIngredient, parseIngredientLine } from '@/lib/ingredients';
 import { youtubeId, youtubeThumb } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
@@ -121,6 +122,14 @@ export default function NewRecipe() {
     setError(null);
     try {
       const photo_path = photo ? await uploadPhoto(active.id, photo.uri, photo.mimeType) : null;
+      // No photo of our own (and no video thumbnail): find a picture online, but don't wait more than 5 s.
+      const image_url =
+        photo_path || mode === 'youtube'
+          ? null
+          : await Promise.race([
+              findRecipeImage(title.trim()),
+              new Promise<null>((done) => setTimeout(() => done(null), 5000)),
+            ]);
       const source: RecipeSource = mode === 'manual' ? 'manual' : mode;
       const id = await createRecipe({
         group_id: active.id,
@@ -132,6 +141,7 @@ export default function NewRecipe() {
         steps,
         dietary_tags: tags,
         photo_path,
+        image_url,
         video_url: mode === 'youtube' && videoUrl.trim() ? videoUrl.trim() : null,
         source,
       });

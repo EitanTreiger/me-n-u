@@ -64,7 +64,7 @@ export default function RecipeDetail() {
   }
   if (!recipe) return <Loading />;
 
-  const image = photoUrl(recipe.photo_path) ?? youtubeThumb(recipe.video_url);
+  const image = photoUrl(recipe.photo_path) ?? recipe.image_url ?? youtubeThumb(recipe.video_url);
   const base = recipe.servings ?? baseGuess;
   const cookingFor = people ?? base;
   const factor = servingFactor(base, cookingFor);
