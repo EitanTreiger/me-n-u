@@ -1,8 +1,9 @@
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, ErrorBanner, Field, Icon, T } from '@/components/ui';
+import { Button, ErrorBanner, Field, T } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { signInWithGoogle } from '@/lib/oauth';
 import { friendlyError, isSupabaseConfigured, supabase } from '@/lib/supabase';
@@ -63,10 +64,12 @@ export default function SignIn() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <View style={styles.container}>
           <View style={styles.brand}>
-            <View style={styles.logo}>
-              <Icon name="restaurant" size={30} color={Colors.onPrimary} />
-            </View>
-            <T variant="title">me-n-u</T>
+            <Image
+              source={require('@/assets/images/logo-wordmark.png')}
+              style={styles.wordmark}
+              contentFit="contain"
+              accessibilityLabel="me-n-u"
+            />
             <T variant="small" style={styles.center}>
               {"Share recipes, plan the week's menu and shop together across every home."}
             </T>
@@ -148,15 +151,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   brand: { alignItems: 'center', gap: Spacing.sm },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
+  // Source is 773x240.
+  wordmark: { width: 232, height: 72, marginBottom: Spacing.sm },
   center: { textAlign: 'center', maxWidth: 300 },
   form: { gap: Spacing.lg },
   or: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
