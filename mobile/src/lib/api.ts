@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 import { PHOTO_BUCKET, supabase } from './supabase';
+import { fetchVideoText } from './youtube';
 import type { ConvertedRecipe, Ingredient, Meal, MenuItem, Recipe, RecipeSource, RecipeStats, RecipeWithStats } from './types';
 
 const RECIPE_SELECT = '*, author:profiles!recipes_author_id_fkey(display_name)';
@@ -95,8 +96,11 @@ export function convertPhoto(base64: string, mediaType: string) {
   return invokeConvert({ imageBase64: base64, mediaType });
 }
 
-export function convertYoutube(url: string) {
-  return invokeConvert({ youtubeUrl: url });
+export async function convertYoutube(url: string) {
+  // Send the description too when this device can read it: the server can
+  // then convert from text in seconds instead of watching the video.
+  const text = await fetchVideoText(url);
+  return invokeConvert({ youtubeUrl: url, title: text?.title, description: text?.description });
 }
 
 // --- Weekly menu -----------------------------------------------------------

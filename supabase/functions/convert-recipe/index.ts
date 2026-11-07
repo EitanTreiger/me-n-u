@@ -175,7 +175,7 @@ async function callGemini(apiKey: string, parts: Part[], isVideo: boolean): Prom
       });
     } catch (e) {
       console.error(`${model}: request failed`, e);
-      lastProblem = 'That took too long. Try a shorter video.';
+      lastProblem = 'The converter is slow right now. Try again in a minute, or pick a video that lists the recipe in its description.';
       continue;
     }
 
@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) return json({ error: 'GEMINI_API_KEY is not set on the server' }, 500);
 
-  let body: { imageBase64?: string; mediaType?: string; youtubeUrl?: string };
+  let body: { imageBase64?: string; mediaType?: string; youtubeUrl?: string; title?: string; description?: string };
   try {
     body = await req.json();
   } catch {
@@ -245,7 +245,11 @@ Deno.serve(async (req) => {
     if (!id) return json({ error: "That doesn't look like a YouTube link" }, 400);
     // 1. Many cooks put the full recipe in the description: read that first,
     //    which takes a few seconds instead of watching the whole video.
-    const text = await fetchVideoText(id);
+    //    The app sends the description (YouTube blocks this server from
+    //    reading it); the server-side fetch is only a fallback.
+    const text: VideoText | null = body.description
+      ? { title: body.title ?? '', description: body.description }
+      : await fetchVideoText(id);
     if (text && descriptionHasRecipe(text.description)) {
       try {
         const fromText = await callGemini(
@@ -276,8 +280,9 @@ Deno.serve(async (req) => {
     isVideo = true;
     parts.push({
       file_data: { file_uri: `https://www.youtube.com/watch?v=${id}` },
-      // Half a frame per second is plenty for cooking; only the first 30 minutes.
-      video_metadata: { fps: 0.5, end_offset: '1800s' },
+      // A frame every 4 s and only the first 10 minutes keeps this inside
+      // Supabase's time limit even when Gemini is slow.
+      video_metadata: { fps: 0.25, end_offset: '600s' },
     });
     parts.push({ text: 'Extract the recipe from this cooking video.' });
   } else {
