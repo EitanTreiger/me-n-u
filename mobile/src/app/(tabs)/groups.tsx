@@ -100,7 +100,7 @@ export default function GroupsTab() {
               compact
               onPress={() =>
                 Share.share({
-                  message: `Join "${active.name}" on Shared Kitchen with invite code ${active.invite_code}`,
+                  message: `Join "${active.name}" on me-n-u with invite code ${active.invite_code}`,
                 })
               }
             />

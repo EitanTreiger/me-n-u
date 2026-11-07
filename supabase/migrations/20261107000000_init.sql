@@ -1,4 +1,4 @@
--- Thresholds Shared Kitchen: initial schema
+-- Thresholds me-n-u: initial schema
 -- Groups (communities), members with roles, recipes, ratings, pantries,
 -- weekly menus and shared grocery checklists. Row level security everywhere.
 

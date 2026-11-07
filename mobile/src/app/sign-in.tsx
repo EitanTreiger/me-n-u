@@ -66,7 +66,7 @@ export default function SignIn() {
             <View style={styles.logo}>
               <Icon name="restaurant" size={30} color={Colors.onPrimary} />
             </View>
-            <T variant="title">Shared Kitchen</T>
+            <T variant="title">me-n-u</T>
             <T variant="small" style={styles.center}>
               {"Share recipes, plan the week's menu and shop together across every home."}
             </T>

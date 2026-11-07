@@ -1,4 +1,4 @@
-# Shared Kitchen — Thresholds ComuniHacks
+# me-n-u — Thresholds ComuniHacks
 
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
 

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Shared Kitchen",
-    "slug": "shared-kitchen",
+    "name": "me-n-u",
+    "slug": "me-n-u",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "sharedkitchen",
+    "scheme": "me-n-u",
     "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon",
@@ -37,8 +37,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Shared Kitchen uses your photos so you can share recipes and pictures of what you're cooking.",
-          "cameraPermission": "Shared Kitchen uses the camera so you can photograph recipe cards and dishes."
+          "photosPermission": "me-n-u uses your photos so you can share recipes and pictures of what you're cooking.",
+          "cameraPermission": "me-n-u uses the camera so you can photograph recipe cards and dishes."
         }
       ]
     ],

@@ -11,7 +11,7 @@ WebBrowser.maybeCompleteAuthSession();
  * Where Google (via Supabase) sends the user back to. This must be listed in
  * Supabase -> Authentication -> URL Configuration -> Redirect URLs.
  *   Expo Go:       exp://<your-ip>:8081/--/auth-callback
- *   Built app:     sharedkitchen://auth-callback
+ *   Built app:     me-n-u://auth-callback
  */
 export const oauthRedirect = Linking.createURL('auth-callback');
 
