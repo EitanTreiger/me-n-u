@@ -146,9 +146,11 @@ export function aggregateIngredients(entries: { recipeTitle: string; ingredients
   const lines = new Map<string, GroceryLine>();
   for (const { recipeTitle, ingredients } of entries) {
     for (const ing of ingredients) {
-      const name = normalizeName(ing.name) || ing.name.toLowerCase();
+      // Group by the normalised name ("carrot"), but show the recipe's own
+      // wording without prep notes ("carrots, diced" -> "carrots").
+      const name = ing.name.split(',')[0].replace(/\(.*?\)/g, '').trim().toLowerCase() || ing.name;
       const unit = normalizeUnit(ing.unit ?? '');
-      const key = `${name}|${unit}`;
+      const key = `${normalizeName(ing.name) || name}|${unit}`;
       const existing = lines.get(key);
       if (existing) {
         existing.quantity += ing.quantity || 0;

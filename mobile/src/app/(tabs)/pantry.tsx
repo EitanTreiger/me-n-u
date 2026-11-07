@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, EmptyState, ErrorBanner, Field, Icon, Loading, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { pantryHas } from '@/lib/ingredients';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
 
@@ -19,8 +20,8 @@ export default function PantryTab() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const have = new Set(pantry.items.map((i) => i.name.toLowerCase()));
-  const suggestions = STAPLES.filter((s) => !have.has(s));
+  // Hide staples already covered ("onions" covers "onion").
+  const suggestions = STAPLES.filter((s) => !pantryHas(pantry.names, s));
 
   async function add(names: string[]) {
     setBusy(true);

@@ -245,6 +245,7 @@ function Line({
         onPress={onToggle}
         accessibilityRole="checkbox"
         accessibilityState={{ checked }}
+        accessibilityLabel={lineText(line)}
         style={({ pressed }) => [styles.lineMain, pressed && { opacity: 0.6 }]}>
         <View style={[styles.checkbox, checked && styles.checkboxOn]}>
           {checked && <Icon name="checkmark" size={16} color={Colors.onPrimary} />}
