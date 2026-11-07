@@ -95,6 +95,48 @@ function youtubeId(url: string): string | null {
   return null;
 }
 
+type VideoText = { title: string; description: string };
+
+/** Title + description from YouTube's player API, falling back to the watch page. */
+async function fetchVideoText(videoId: string): Promise<VideoText | null> {
+  try {
+    const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId, context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38', hl: 'en' } } }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const description = data?.videoDetails?.shortDescription;
+      if (description) return { title: data.videoDetails.title ?? '', description };
+    }
+  } catch {
+    // fall through to the watch page
+  }
+  try {
+    const html = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'en' },
+      signal: AbortSignal.timeout(8_000),
+    }).then((r) => r.text());
+    const desc = html.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/)?.[1];
+    const title = html.match(/<title>(.*?)(?: - YouTube)?<\/title>/)?.[1] ?? '';
+    if (desc) return { title, description: JSON.parse(`"${desc}"`) };
+  } catch {
+    // no description available
+  }
+  return null;
+}
+
+/** Cheap check before asking the model: does the description list ingredients? */
+function descriptionHasRecipe(description: string): boolean {
+  if (/ingredients?\s*:?/i.test(description)) return true;
+  const amountLines = description
+    .split('\n')
+    .filter((l) => /^\s*[-•*]?\s*(\d|½|¼|¾|⅓|⅔)/.test(l) && /[a-z]{3,}/i.test(l));
+  return amountLines.length >= 3;
+}
+
 class UserFacingError extends Error {
   constructor(message: string, public status = 422) {
     super(message);
@@ -201,6 +243,36 @@ Deno.serve(async (req) => {
   } else if (body.youtubeUrl) {
     const id = youtubeId(body.youtubeUrl);
     if (!id) return json({ error: "That doesn't look like a YouTube link" }, 400);
+    // 1. Many cooks put the full recipe in the description: read that first,
+    //    which takes a few seconds instead of watching the whole video.
+    const text = await fetchVideoText(id);
+    if (text && descriptionHasRecipe(text.description)) {
+      try {
+        const fromText = await callGemini(
+          apiKey,
+          [
+            {
+              text: [
+                'Extract the recipe from this YouTube video description.',
+                `<video_title>${text.title}</video_title>`,
+                `<video_description>${text.description}</video_description>`,
+              ].join('\n'),
+            },
+          ],
+          false,
+        );
+        const ingredients = fromText.ingredients as unknown[] | undefined;
+        if (fromText.is_recipe && ingredients && ingredients.length >= 2) {
+          delete fromText.is_recipe;
+          fromText.dietary_tags = ((fromText.dietary_tags as string[]) ?? []).filter((t) => DIETARY_TAGS.includes(t));
+          return json({ recipe: fromText, from: 'description' });
+        }
+      } catch (e) {
+        console.error('description pass failed, watching the video instead', e);
+      }
+    }
+
+    // 2. Otherwise Gemini watches the video.
     isVideo = true;
     parts.push({
       file_data: { file_uri: `https://www.youtube.com/watch?v=${id}` },

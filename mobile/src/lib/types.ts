@@ -31,6 +31,7 @@ export type Recipe = {
   steps: string[];
   dietary_tags: string[];
   photo_path: string | null;
+  image_url: string | null;
   video_url: string | null;
   source: RecipeSource;
   created_at: string;

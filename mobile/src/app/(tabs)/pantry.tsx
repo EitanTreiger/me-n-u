@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, EmptyState, ErrorBanner, Field, Icon, Loading, SectionHeader, T } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { pantryHas } from '@/lib/ingredients';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
@@ -20,8 +21,18 @@ export default function PantryTab() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Hide staples already covered ("onions" covers "onion").
-  const suggestions = STAPLES.filter((s) => !pantryHas(pantry.names, s));
+  // While typing, search every known ingredient; otherwise show common staples.
+  // Items already covered by the pantry ("onions" covers "onion") are hidden.
+  const query = text.split(',').pop()!.trim().toLowerCase();
+  const suggestions = (
+    query
+      ? INGREDIENT_CATALOG.filter((i) => i.includes(query)).sort(
+          (a, b) => Number(!a.startsWith(query)) - Number(!b.startsWith(query)) || a.length - b.length,
+        )
+      : STAPLES
+  )
+    .filter((s) => !pantryHas(pantry.names, s))
+    .slice(0, 30);
 
   async function add(names: string[]) {
     setBusy(true);
@@ -54,7 +65,7 @@ export default function PantryTab() {
           <Field
             value={text}
             onChangeText={setText}
-            placeholder="Add items, separated by commas"
+            placeholder="Search ingredients, or type your own"
             onSubmitEditing={submit}
             returnKeyType="done"
             autoCapitalize="none"
@@ -66,10 +77,15 @@ export default function PantryTab() {
 
       {suggestions.length > 0 && (
         <>
-          <SectionHeader title="Quick add" />
+          <SectionHeader title={query ? `Matches for “${query}”` : 'Quick add'} />
           <View style={styles.chips}>
             {suggestions.map((s) => (
-              <Chip key={s} label={s} icon="add" onPress={() => add([s])} />
+              <Chip
+                key={s}
+                label={s}
+                icon="add"
+                onPress={() => add([...text.split(',').slice(0, -1), s])}
+              />
             ))}
           </View>
         </>
