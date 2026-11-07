@@ -8,7 +8,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
 import { formatIngredient, pantryHas } from '@/lib/ingredients';
-import { isStaple, stepFor } from '@/lib/pantry-units';
+import { stepFor } from '@/lib/pantry-units';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
 
@@ -148,7 +148,8 @@ export default function PantryTab() {
       ) : (
         <Card style={styles.list}>
           {pantry.items.map((item, i) => {
-            const staple = isStaple(item.name);
+            // No amount (salt, oils, sauces...): just "in stock".
+            const staple = item.quantity <= 0;
             const step = stepFor(item.unit);
             return (
               <View key={item.id}>
@@ -156,7 +157,7 @@ export default function PantryTab() {
                 <View style={styles.row}>
                   <View style={{ flex: 1 }}>
                     <T style={styles.itemText} numberOfLines={1}>
-                      {staple ? item.name : formatIngredient({ name: item.name, quantity: item.quantity || 1, unit: item.unit })}
+                      {staple ? item.name : formatIngredient({ name: item.name, quantity: item.quantity, unit: item.unit })}
                     </T>
                   </View>
                   {staple ? (
@@ -165,7 +166,7 @@ export default function PantryTab() {
                   ) : (
                     <>
                       <Stepper
-                        value={Math.round((item.quantity || 1) / step) * step}
+                        value={Math.round(item.quantity / step) * step}
                         min={0}
                         max={999}
                         step={step}
@@ -192,7 +193,7 @@ export default function PantryTab() {
       )}
       {pantry.items.length > 0 && (
         <T variant="small" style={{ marginTop: Spacing.md }}>
-          {"Shared by everyone in your community. Use − and + to update amounts; going to 0 removes the item. Spices and salt are just in stock or not, and aren't used up when you cook."}
+          {"Shared by everyone in your community. Use − and + to update amounts; going to 0 removes the item. Things that are hard to measure, like salt, spices, oils and sauces, just show as in stock unless you add an amount (e.g. \"2 tbsp olive oil\")."}
         </T>
       )}
     </Screen>

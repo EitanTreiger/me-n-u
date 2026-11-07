@@ -33,6 +33,22 @@ export function isStaple(name: string): boolean {
   return STAPLE_WORDS.some((w) => isWord(n, w)) || /\b(dried|ground)\s+\w+/.test(n) || /\bpowder\b/.test(n);
 }
 
+const CONDIMENTS = /\b(ketchup|mustard|mayonnaise|mayo|honey|jam|jelly|peanut butter|hot sauce|sriracha|salsa|dressing|relish|hoisin|tahini|miso|gochujang|curry paste|maple syrup|molasses|worcestershire)\b/;
+
+/**
+ * Hard to measure how much is left (oils, sauces, condiments, liquids,
+ * spices): tracked as "in stock" unless a real measurement is given.
+ */
+export function isHardToMeasure(name: string): boolean {
+  const n = name.toLowerCase();
+  return isStaple(n) || LIQUID_WORDS.test(n) || CONDIMENTS.test(n);
+}
+
+/** A unit that measures an amount (2 tbsp, 500 ml, 1 lb), not just a count. */
+export function isMeasureUnit(unit: string): boolean {
+  return ['tsp', 'tbsp', 'cup', 'ml', 'l', 'g', 'kg', 'oz', 'lb', 'fl oz', 'bottle', 'jar', 'can', 'bag', 'box'].includes(unit);
+}
+
 const BY_POUND = [
   // meat and fish
   'chicken', 'beef', 'steak', 'pork', 'lamb', 'turkey', 'veal', 'ground', 'mince', 'sausage', 'ham', 'bacon',
