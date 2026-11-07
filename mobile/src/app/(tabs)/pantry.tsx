@@ -8,7 +8,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
 import { formatIngredient, formatQuantity, pantryHas } from '@/lib/ingredients';
-import { pantryLabel, stepFor } from '@/lib/pantry-units';
+import { PANTRY_SECTIONS, pantryLabel, pantrySection, stepFor } from '@/lib/pantry-units';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
 
@@ -134,20 +134,29 @@ export default function PantryTab() {
         </>
       )}
 
-      <SectionHeader title={`In the pantry · ${pantry.items.length}`} />
       {pantry.loading ? (
         <Loading />
       ) : pantry.items.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon="basket-outline"
-            title="Your pantry is empty"
-            body="Add what's in your cupboards and fridge. Every recipe will then show exactly what's missing."
-          />
-        </Card>
+        <>
+          <SectionHeader title="In the pantry" />
+          <Card>
+            <EmptyState
+              icon="basket-outline"
+              title="Your pantry is empty"
+              body="Add what's in your cupboards and fridge. Every recipe will then show exactly what's missing."
+            />
+          </Card>
+        </>
       ) : (
-        <Card style={styles.list}>
-          {pantry.items.map((item, i) => {
+        // Perishables grouped by kind (meat, vegetables, ...), basics last.
+        PANTRY_SECTIONS.map((section) => {
+          const items = pantry.items.filter((item) => pantrySection(item.name, item.quantity) === section);
+          if (!items.length) return null;
+          return (
+            <View key={section}>
+              <SectionHeader title={`${section} · ${items.length}`} />
+              <Card style={styles.list}>
+                {items.map((item, i) => {
             // No amount (salt, oils, sauces...): just "in stock".
             const staple = item.quantity <= 0;
             const step = stepFor(item.unit);
@@ -189,8 +198,11 @@ export default function PantryTab() {
                 </View>
               </View>
             );
-          })}
-        </Card>
+                })}
+              </Card>
+            </View>
+          );
+        })
       )}
       {pantry.items.length > 0 && (
         <T variant="small" style={{ marginTop: Spacing.md }}>

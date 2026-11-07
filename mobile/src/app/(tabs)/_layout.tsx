@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router/tabs';
+import { BottomTabBar, Tabs } from 'expo-router/tabs';
 import type { ComponentProps } from 'react';
-import type { ColorValue } from 'react-native';
+import { StyleSheet, View, type ColorValue } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { SettingsLogo } from '@/components/logo-menu';
 import { useLayout } from '@/hooks/use-layout';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -19,6 +20,27 @@ export default function TabsLayout() {
   const { wide } = useLayout();
   return (
     <Tabs
+      // The usual tab bar plus the settings logo in the bottom-left corner:
+      // under the sidebar on computers, at the left end of the tab bar on phones.
+      tabBar={(props) =>
+        wide ? (
+          <View style={styles.sidebar}>
+            <View style={{ flex: 1 }}>
+              <BottomTabBar {...props} />
+            </View>
+            <View style={styles.sidebarFooter}>
+              <SettingsLogo />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.bottomBar}>
+            <SettingsLogo compact />
+            <View style={{ flex: 1 }}>
+              <BottomTabBar {...props} />
+            </View>
+          </View>
+        )
+      }
       screenOptions={{
         headerShown: false,
         tabBarPosition: wide ? 'left' : 'bottom',
@@ -27,9 +49,10 @@ export default function TabsLayout() {
         tabBarActiveTintColor: Colors.primaryStrong,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarActiveBackgroundColor: wide ? Colors.primarySoft : undefined,
+        // Borders are drawn by the wrappers below so the settings logo shares them.
         tabBarStyle: wide
-          ? { backgroundColor: Colors.surface, borderRightColor: Colors.border, paddingTop: 16 }
-          : { backgroundColor: Colors.surface, borderTopColor: Colors.border },
+          ? { backgroundColor: Colors.surface, borderRightWidth: 0, paddingTop: 16 }
+          : { backgroundColor: Colors.surface, borderTopWidth: 0 },
         tabBarLabelStyle: { fontSize: wide ? 15 : 11, fontWeight: '600' },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Recipes', tabBarIcon: tabIcon('book', 'book-outline') }} />
@@ -40,3 +63,16 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  sidebar: { height: '100%', backgroundColor: Colors.surface, borderRightWidth: 1, borderRightColor: Colors.border },
+  sidebarFooter: { borderTopWidth: 1, borderTopColor: Colors.border },
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 6,
+  },
+});
