@@ -1,12 +1,18 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 import { PHOTO_BUCKET, supabase } from './supabase';
+import { fromISODate, weekStart } from './week';
 import { fetchVideoText } from './youtube';
 import type { ConvertedRecipe, Ingredient, Meal, MenuItem, Recipe, RecipeSource, RecipeStats, RecipeWithStats } from './types';
 
 const RECIPE_SELECT = '*, author:profiles!recipes_author_id_fkey(display_name)';
 
 type Vote = { recipe_id: string; user_id: string };
+
+/** Menu votes count for the current week only (from Monday, local time). */
+function voteWeekStart(): string {
+  return fromISODate(weekStart()).toISOString();
+}
 
 function withStats(recipes: Recipe[], stats: RecipeStats[], votes: Vote[], userId: string | undefined): RecipeWithStats[] {
   const byId = new Map(stats.map((s) => [s.recipe_id, s]));
@@ -26,7 +32,8 @@ export async function listRecipes(groupId: string): Promise<RecipeWithStats[]> {
   const [recipes, stats, votes] = await Promise.all([
     supabase.from('recipes').select(RECIPE_SELECT).eq('group_id', groupId).order('created_at', { ascending: false }),
     supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('group_id', groupId),
-    supabase.from('menu_votes').select('recipe_id, user_id, recipes!inner(group_id)').eq('recipes.group_id', groupId),
+    supabase.from('menu_votes').select('recipe_id, user_id, recipes!inner(group_id)').eq('recipes.group_id', groupId)
+      .gte('created_at', voteWeekStart()),
   ]);
   if (recipes.error) throw recipes.error;
   if (stats.error) throw stats.error;
@@ -40,7 +47,7 @@ export async function getRecipe(id: string): Promise<{ recipe: RecipeWithStats; 
     supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('recipe_id', id).maybeSingle(),
     supabase.from('recipe_ratings').select('score').eq('recipe_id', id).eq('user_id', userData.user?.id ?? '').maybeSingle(),
     supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('recipe_id', id),
-    supabase.from('menu_votes').select('recipe_id, user_id').eq('recipe_id', id),
+    supabase.from('menu_votes').select('recipe_id, user_id').eq('recipe_id', id).gte('created_at', voteWeekStart()),
   ]);
   if (recipe.error) throw recipe.error;
   const [withS] = withStats(
@@ -56,7 +63,8 @@ export async function getRecipe(id: string): Promise<{ recipe: RecipeWithStats; 
 export async function setMenuVote(recipeId: string, vote: boolean) {
   const { data: userData } = await supabase.auth.getUser();
   const q = vote
-    ? supabase.from('menu_votes').upsert({ recipe_id: recipeId, user_id: userData.user!.id })
+    ? // Re-voting in a new week refreshes the date so it counts for this week.
+      supabase.from('menu_votes').upsert({ recipe_id: recipeId, user_id: userData.user!.id, created_at: new Date().toISOString() })
     : supabase.from('menu_votes').delete().eq('recipe_id', recipeId).eq('user_id', userData.user!.id);
   const { error } = await q;
   if (error) throw error;

@@ -4,7 +4,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, EmptyState, ErrorBanner, Field, IconButton, Loading, SectionHeader, Stepper, T } from '@/components/ui';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, InputText, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
 import { formatIngredient, formatQuantity, pantryHas, parseIngredientLine } from '@/lib/ingredients';
@@ -338,6 +338,7 @@ const styles = StyleSheet.create({
   reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   reviewRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   reviewInput: {
+    ...InputText,
     minHeight: 40,
     borderWidth: 1,
     borderColor: Colors.border,
