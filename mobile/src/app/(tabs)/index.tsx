@@ -6,7 +6,7 @@ import { GroupGate } from '@/components/group-gate';
 import { RecipeCard } from '@/components/recipe-card';
 import { Screen } from '@/components/screen';
 import { Button, Chip, EmptyState, ErrorBanner, Icon, Loading, T } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, InputText, Radius, Spacing } from '@/constants/theme';
 import { listRecipes } from '@/lib/api';
 import { missingIngredients } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
@@ -25,14 +25,14 @@ const SORTS: {
   icon: 'trophy-outline' | 'thumbs-up-outline' | 'person-outline' | 'time-outline' | 'checkmark-circle-outline';
 }[] = [
   { key: 'top', label: 'Top rated', icon: 'trophy-outline' },
-  { key: 'votes', label: 'Most votes', icon: 'thumbs-up-outline' },
+  { key: 'votes', label: 'Most Votes', icon: 'thumbs-up-outline' },
   { key: 'mine', label: 'My recipes', icon: 'person-outline' },
   { key: 'new', label: 'Newest', icon: 'time-outline' },
   { key: 'ready', label: 'Ready to cook', icon: 'checkmark-circle-outline' },
 ];
 
 function RecipesList() {
-  const { active } = useGroups();
+  const { active, isAdmin } = useGroups();
   const { names: pantry } = usePantry();
   const [recipes, setRecipes] = useState<RecipeWithStats[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -128,7 +128,8 @@ function RecipesList() {
       </View>
 
       <View style={styles.sortRow}>
-        {SORTS.map((s) => (
+        {/* Most Votes (this week's member votes) is for admins planning the menu. */}
+        {SORTS.filter((s) => s.key !== 'votes' || isAdmin).map((s) => (
           <Chip key={s.key} label={s.label} icon={s.icon} selected={sort === s.key} onPress={() => setSort(s.key)} />
         ))}
       </View>
@@ -161,8 +162,8 @@ function RecipesList() {
         ) : sort === 'votes' ? (
           <EmptyState
             icon="thumbs-up-outline"
-            title="No votes yet"
-            body="Open a recipe and tap “Vote for the menu” to suggest it for the weekly menu."
+            title="No votes this week yet"
+            body="When members tap “Vote for the menu” on a recipe, it shows up here, most votes first. Votes reset every Monday."
           />
         ) : (
           <EmptyState icon="search-outline" title="Nothing matches" body="Try a different search or clear the filters." />
@@ -205,15 +206,17 @@ const styles = StyleSheet.create({
   search: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.md,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    minHeight: 46,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    minHeight: 52,
+    marginBottom: Spacing.xs,
   },
-  searchInput: { flex: 1, fontSize: 16, color: Colors.text, paddingVertical: Spacing.sm },
+  searchInput: { ...InputText, flex: 1, fontSize: 16, color: Colors.text, paddingVertical: Spacing.md },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.md },
   tagRow: { gap: Spacing.sm, paddingVertical: Spacing.md },
   list: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.md, marginTop: Spacing.xs },

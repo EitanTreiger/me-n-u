@@ -1,3 +1,5 @@
+import { Platform, type TextStyle } from 'react-native';
+
 /**
  * Design tokens. Flat colours only, no gradients.
  * #B9D1BD is the brand sage. It is light, so text placed on it uses `onPrimary`.
@@ -51,3 +53,17 @@ export const Type = {
 };
 
 export const MaxContentWidth = 720;
+
+/**
+ * Text boxes on the web otherwise use the browser's own font and a black
+ * focus outline; this matches them to the rest of the app.
+ */
+export const InputText = (
+  Platform.OS === 'web'
+    ? {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        outlineStyle: 'none',
+        outlineWidth: 0,
+      }
+    : {}
+) as TextStyle;

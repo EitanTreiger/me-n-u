@@ -13,7 +13,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Colors, Radius, Spacing, Type } from '@/constants/theme';
+import { Colors, InputText, Radius, Spacing, Type } from '@/constants/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -361,6 +361,7 @@ const styles = StyleSheet.create({
   cardPressed: { backgroundColor: Colors.primarySoft },
   field: { gap: Spacing.xs + 2 },
   input: {
+    ...InputText,
     minHeight: 48,
     backgroundColor: Colors.surface,
     borderWidth: 1,
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   stepperButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primarySoft },
-  stepperInput: { width: 52, height: 40, textAlign: 'center', fontSize: 17, fontWeight: '700', color: Colors.text },
+  stepperInput: { ...InputText, width: 52, height: 40, textAlign: 'center', fontSize: 17, fontWeight: '700', color: Colors.text },
   empty: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xxl, paddingHorizontal: Spacing.xl },
   emptyIcon: {
     width: 64,

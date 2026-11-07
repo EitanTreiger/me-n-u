@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { RecipeThumb } from '@/components/recipe-card';
 import { Button, Card, Chip, ErrorBanner, Icon, Loading, Stars, Stepper, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Colors, InputText, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { addMenuItem, listRecipes } from '@/lib/api';
 import { formatFactor, servingFactor } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     minHeight: 46,
   },
-  searchInput: { flex: 1, fontSize: 16, color: Colors.text, paddingVertical: Spacing.sm },
+  searchInput: { ...InputText, flex: 1, fontSize: 16, color: Colors.text, paddingVertical: Spacing.sm },
   footer: {
     position: 'absolute',
     left: 0,
