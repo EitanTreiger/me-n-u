@@ -1,16 +1,23 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, EmptyState, ErrorBanner, Field, IconButton, Loading, SectionHeader, Stepper, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
-import { formatIngredient, formatQuantity, pantryHas } from '@/lib/ingredients';
+import { formatIngredient, formatQuantity, pantryHas, parseIngredientLine } from '@/lib/ingredients';
 import { PANTRY_SECTIONS, pantryLabel, pantrySection, stepFor } from '@/lib/pantry-units';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
+
+type ReviewItem = { key: string; name: string; amount: string; unit: string };
+
+/** "1.5", "1 1/2", "½" -> number (0 when empty). */
+function parseAmount(text: string): number {
+  return parseIngredientLine(`${text.trim()} x`)?.quantity ?? (Number(text) || 0);
+}
 
 const STAPLES = [
   'salt', 'pepper', 'olive oil', 'vegetable oil', 'butter', 'eggs', 'milk', 'flour', 'sugar', 'rice',
@@ -25,6 +32,30 @@ export default function PantryTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState<string | null>(null);
+  // Items read from a receipt, waiting to be checked before they're added.
+  const [review, setReview] = useState<ReviewItem[] | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  function editReview(key: string, patch: Partial<ReviewItem>) {
+    setReview((prev) => prev?.map((r) => (r.key === key ? { ...r, ...patch } : r)) ?? null);
+  }
+
+  async function confirmReview() {
+    if (!review) return;
+    const items = review
+      .filter((r) => r.name.trim())
+      .map((r) => ({ name: r.name.trim(), quantity: parseAmount(r.amount), unit: r.unit.trim() }));
+    setConfirming(true);
+    try {
+      await pantry.add(items);
+      setReview(null);
+      setScanned(`Added ${items.length} item${items.length === 1 ? '' : 's'} to the pantry.`);
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   // While typing, search every known ingredient; otherwise show common staples.
   // Items already covered by the pantry ("onions" covers "onion") are hidden.
@@ -70,9 +101,17 @@ export default function PantryTab() {
     try {
       const items = await readReceipt(asset.base64, asset.mimeType ?? 'image/jpeg');
       if (!items.length) setError("Couldn't find any food items in that photo.");
+      // Show the list for checking and editing before anything is added.
       else {
-        await pantry.add(items);
-        setScanned(`Added ${items.length} item${items.length === 1 ? '' : 's'} from your photo.`);
+        setScanned(null);
+        setReview(
+          items.map((it, i) => ({
+            key: `${i}-${it.name}`,
+            name: it.name,
+            amount: it.quantity ? formatQuantity(it.quantity) : '',
+            unit: it.unit ?? '',
+          })),
+        );
       }
     } catch (e) {
       setError(friendlyError(e));
@@ -115,6 +154,84 @@ export default function PantryTab() {
         </View>
       </Card>
       {scanning && <T variant="small">Reading your photo…</T>}
+      {review && (
+        <Card style={styles.review}>
+          <View style={{ gap: 2 }}>
+            <T variant="subheading">Check these before adding</T>
+            <T variant="small">
+              {"Fix anything that's wrong, remove what you don't want, or add anything that's missing. Leave the amount empty for things like spices or oils."}
+            </T>
+          </View>
+          <View style={styles.reviewHeader}>
+            <T variant="label" style={{ flex: 1 }}>
+              Item
+            </T>
+            <T variant="label" style={styles.amountCol}>
+              Amount
+            </T>
+            <T variant="label" style={styles.unitCol}>
+              Unit
+            </T>
+            <View style={{ width: 30 }} />
+          </View>
+          {review.map((r) => (
+            <View key={r.key} style={styles.reviewRow}>
+              <TextInput
+                value={r.name}
+                onChangeText={(name) => editReview(r.key, { name })}
+                placeholder="Item"
+                placeholderTextColor={Colors.textMuted}
+                style={[styles.reviewInput, { flex: 1 }]}
+                accessibilityLabel="Item name"
+              />
+              <TextInput
+                value={r.amount}
+                onChangeText={(amount) => editReview(r.key, { amount })}
+                placeholder="–"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="decimal-pad"
+                style={[styles.reviewInput, styles.amountCol]}
+                accessibilityLabel={`Amount of ${r.name}`}
+              />
+              <TextInput
+                value={r.unit}
+                onChangeText={(unit) => editReview(r.key, { unit })}
+                placeholder="–"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="none"
+                style={[styles.reviewInput, styles.unitCol]}
+                accessibilityLabel={`Unit for ${r.name}`}
+              />
+              <IconButton
+                name="close"
+                size={18}
+                color={Colors.textMuted}
+                label={`Don't add ${r.name}`}
+                onPress={() => setReview((prev) => prev?.filter((x) => x.key !== r.key) ?? null)}
+              />
+            </View>
+          ))}
+          <Button
+            title="Add another item"
+            icon="add"
+            variant="ghost"
+            compact
+            onPress={() => setReview((prev) => [...(prev ?? []), { key: `new-${Date.now()}`, name: '', amount: '', unit: '' }])}
+            style={{ alignSelf: 'flex-start' }}
+          />
+          <View style={styles.reviewActions}>
+            <Button
+              title={`Add ${review.filter((r) => r.name.trim()).length} to pantry`}
+              icon="checkmark"
+              onPress={confirmReview}
+              loading={confirming}
+              disabled={!review.some((r) => r.name.trim())}
+              style={{ flex: 1 }}
+            />
+            <Button title="Cancel" variant="secondary" onPress={() => setReview(null)} style={{ flex: 1 }} />
+          </View>
+        </Card>
+      )}
       {scanned && !scanning && <T variant="small" style={{ color: Colors.success }}>{scanned}</T>}
       <ErrorBanner message={error} />
 
@@ -217,6 +334,22 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
   scanCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.md },
   scanButtons: { flexDirection: 'row', gap: Spacing.sm },
+  review: { gap: Spacing.md, marginTop: Spacing.md, borderColor: Colors.primary, borderWidth: 2 },
+  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  reviewInput: {
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: Spacing.sm,
+    fontSize: 15,
+    color: Colors.text,
+    backgroundColor: Colors.surface,
+  },
+  amountCol: { width: 64 },
+  unitCol: { width: 60 },
+  reviewActions: { flexDirection: 'row', gap: Spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   list: { paddingVertical: Spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
