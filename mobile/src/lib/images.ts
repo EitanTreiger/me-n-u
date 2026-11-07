@@ -58,8 +58,31 @@ async function fromWikipedia(title: string): Promise<string | null> {
   return match?.thumbnail?.source ?? null;
 }
 
+/**
+ * Last resort: the lead image of a Wikipedia article named after the dish,
+ * trying shorter endings of the title ("Teriyaki Tofu Stir-Fry" ->
+ * "Tofu Stir-Fry" -> "Stir-Fry"), since the last words usually name the dish.
+ */
+async function fromWikipediaTitle(title: string): Promise<string | null> {
+  const parts = title.replace(/^(classic|easy|quick|homemade|simple)\s+/i, '').split(/\s+/);
+  for (let start = 0; start < parts.length; start++) {
+    const candidate = parts.slice(start).join(' ');
+    if (candidate.length < 4 || STOP_WORDS.has(candidate.toLowerCase())) continue;
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(candidate.replace(/ /g, '_'))}?redirect=true`,
+      { headers: { 'Api-User-Agent': 'me-n-u/1.0 (recipe sharing app prototype)' } },
+    );
+    if (!res.ok) continue;
+    const data = (await res.json()) as { type?: string; thumbnail?: { source: string } };
+    if (data.type === 'standard' && data.thumbnail?.source && !/\.svg/i.test(data.thumbnail.source)) {
+      return data.thumbnail.source.replace(/\/\d+px-/, '/800px-');
+    }
+  }
+  return null;
+}
+
 export async function findRecipeImage(title: string): Promise<string | null> {
-  for (const source of [fromMealDb, fromWikipedia]) {
+  for (const source of [fromMealDb, fromWikipedia, fromWikipediaTitle]) {
     try {
       const url = await source(title);
       if (url) return url;
