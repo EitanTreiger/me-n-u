@@ -113,6 +113,11 @@ function MenuPlanner() {
                                 <T numberOfLines={1} style={styles.recipeLink}>
                                   {p.recipe?.title ?? 'Recipe removed'}
                                 </T>
+                                {!!p.servings && (
+                                  <T variant="small">
+                                    For {p.servings} {p.servings === 1 ? 'person' : 'people'}
+                                  </T>
+                                )}
                               </Pressable>
                               {isAdmin && (
                                 <IconButton

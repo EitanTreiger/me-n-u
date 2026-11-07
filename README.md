@@ -6,7 +6,8 @@ A mobile app for Thresholds group homes to share recipes, plan weekly menus and 
 - **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Claude converts the photo or video into an editable, structured recipe.
 - **Pantry and "what's missing".** Each person keeps a pantry list. Every recipe shows what you have and what you still need to buy.
 - **Ratings and consensus ranking.** Everyone rates recipes 1–5 stars. The **Top rated** list uses a Bayesian average, so one 5‑star vote can't outrank twenty 4.6s.
-- **Weekly menu (admins).** Admins plan breakfast, lunch and dinner for each day of any week.
+- **Cook for any number of people.** Set "Cooking for" on a recipe (say 10 people for a recipe that serves 2) and every ingredient scales ×5. Amounts are rounded to kitchen-friendly sizes: whole eggs, quarter cups, teaspoons instead of tiny tablespoons.
+- **Weekly menu (admins).** Admins plan breakfast, lunch and dinner for each day of any week, and set how many people each meal is for.
 - **Grocery list.** Built automatically from the week's menu. Quantities are combined across recipes, items already in your pantry are split out, and admins can add extras. Ticking items off is shared live, and the list can be sent through the share sheet.
 - **Dietary tags.** Vegetarian, vegan, gluten‑free, halal and more, used both for filtering and when converting recipes.
 
@@ -25,7 +26,9 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
 ### 1. Supabase project
 
 1. Create a free project at <https://supabase.com>.
-2. In **SQL Editor**, paste and run [`supabase/migrations/20261107000000_init.sql`](supabase/migrations/20261107000000_init.sql). This creates the tables, row‑level security, the `recipe-photos` storage bucket and realtime.
+2. In **SQL Editor**, paste and run each file in [`supabase/migrations/`](supabase/migrations) in order, oldest first:
+   - [`20261107000000_init.sql`](supabase/migrations/20261107000000_init.sql) creates the tables, row‑level security, the `recipe-photos` storage bucket and realtime.
+   - [`20261107020000_menu_servings.sql`](supabase/migrations/20261107020000_menu_servings.sql) lets each planned meal store how many people it's for.
 3. For quick testing, go to **Authentication → Providers → Email** and turn off **Confirm email** so new accounts can sign in right away.
 
 ### 2. Recipe converter (photo / YouTube → text)

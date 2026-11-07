@@ -71,12 +71,16 @@ export function formatQuantity(q: number): string {
   if (!q) return '';
   const whole = Math.floor(q);
   const frac = q - whole;
+  if (frac < 0.02) return String(whole);
+  if (frac > 0.98) return String(whole + 1);
   const fractions: [number, string][] = [
-    [0.25, '¼'], [0.333, '⅓'], [0.5, '½'], [0.667, '⅔'], [0.75, '¾'],
+    [0.125, '⅛'], [0.25, '¼'], [0.333, '⅓'], [0.375, '⅜'], [0.5, '½'], [0.625, '⅝'], [0.667, '⅔'], [0.75, '¾'], [0.875, '⅞'],
   ];
   const match = fractions.find(([v]) => Math.abs(frac - v) < 0.02);
   if (match) return whole ? `${whole}${match[1]}` : match[1];
-  return Number.isInteger(q) ? String(q) : String(Math.round(q * 100) / 100);
+  // Scaled amounts like 2.38 read better rounded: 1 decimal above 10, 2 below.
+  const rounded = q >= 10 ? Math.round(q * 10) / 10 : Math.round(q * 100) / 100;
+  return String(rounded);
 }
 
 const COUNTABLE_UNITS = new Set(['cup', 'clove', 'can', 'slice', 'pinch', 'jar', 'bottle', 'stick', 'head', 'sprig', 'bunch', 'handful', 'package', 'piece']);
@@ -87,9 +91,67 @@ export function displayUnit(unit: string, quantity: number): string {
   return unit;
 }
 
+/** "3 onion" -> "3 onions" for countable items with no unit. */
+export function displayName(name: string, unit: string, quantity: number): string {
+  if (unit || quantity <= 1) return name;
+  const [head, ...rest] = name.split(',');
+  const words = head.trimEnd().split(' ');
+  const last = words[words.length - 1];
+  if (!last || /s$/i.test(last)) return name;
+  words[words.length - 1] = /(ch|sh|x|o)$/i.test(last) ? `${last}es` : last.endsWith('y') && !/[aeiou]y$/i.test(last) ? `${last.slice(0, -1)}ies` : `${last}s`;
+  return [words.join(' '), ...rest].join(',');
+}
+
 export function formatIngredient(i: Ingredient): string {
   const qty = formatQuantity(i.quantity);
-  return [qty, displayUnit(i.unit, i.quantity), i.name].filter(Boolean).join(' ');
+  return [qty, displayUnit(i.unit, i.quantity), displayName(i.name, i.unit, i.quantity)].filter(Boolean).join(' ');
+}
+
+/** How many times to multiply a recipe that serves `base` to feed `people`. */
+export function servingFactor(base: number | null | undefined, people: number | null | undefined): number {
+  if (!base || !people || base <= 0 || people <= 0) return 1;
+  return people / base;
+}
+
+const WHOLE_UNITS = new Set(['', 'clove', 'can', 'slice', 'piece', 'jar', 'bottle', 'head', 'stick', 'bunch', 'package', 'pkg']);
+
+/** Make a scaled amount practical to measure in a kitchen. */
+export function tidyAmount(i: Ingredient): Ingredient {
+  let { quantity: q, unit } = i;
+  unit = normalizeUnit(unit);
+  if (!q) return i;
+  // Switch to a more sensible spoon/cup size.
+  if (unit === 'cup' && q < 0.25) { q *= 16; unit = 'tbsp'; }
+  if (unit === 'tbsp' && q < 1) { q *= 3; unit = 'tsp'; }
+  if (unit === 'tsp' && q >= 3 && Math.abs(q / 3 - Math.round(q / 3 * 4) / 4) < 0.01) { q /= 3; unit = 'tbsp'; }
+
+  if (WHOLE_UNITS.has(unit)) {
+    // You can't buy 2⅓ eggs: round up (½ is fine for small amounts).
+    q = q < 1 ? Math.ceil(q * 2) / 2 : Math.ceil(q - 0.05);
+  } else if (['cup', 'tbsp', 'tsp'].includes(unit)) {
+    q = q < 1 ? Math.max(0.125, Math.round(q * 8) / 8) : Math.round(q * 4) / 4;
+  } else if (unit === 'g' || unit === 'ml') {
+    q = q >= 100 ? Math.round(q / 5) * 5 : Math.round(q);
+  } else if (unit === 'lb' || unit === 'oz') {
+    q = Math.max(0.25, Math.round(q * 4) / 4);
+  } else if (unit === 'kg' || unit === 'l') {
+    q = Math.round(q * 100) / 100;
+  }
+  return { ...i, quantity: q, unit };
+}
+
+/** Multiply every quantity; "to taste" items (quantity 0) stay as they are. */
+export function scaleIngredients(ingredients: Ingredient[], factor: number, { tidy = true } = {}): Ingredient[] {
+  if (factor === 1) return ingredients;
+  return ingredients.map((i) => {
+    const scaled = { ...i, quantity: i.quantity ? i.quantity * factor : 0 };
+    return tidy ? tidyAmount(scaled) : scaled;
+  });
+}
+
+/** "×5", "×2½", "×0.5" style label for a factor. */
+export function formatFactor(factor: number): string {
+  return `×${formatQuantity(Math.round(factor * 100) / 100) || factor.toFixed(2)}`;
 }
 
 const UNICODE_FRACTIONS: Record<string, number> = { '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 0.125 };

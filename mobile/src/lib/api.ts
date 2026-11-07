@@ -111,10 +111,10 @@ export async function listMenu(groupId: string, week: string): Promise<MenuItem[
   return data as MenuItem[];
 }
 
-export async function addMenuItem(groupId: string, week: string, day: number, meal: Meal, recipeId: string) {
+export async function addMenuItem(groupId: string, week: string, day: number, meal: Meal, recipeId: string, servings: number) {
   const { error } = await supabase
     .from('menu_items')
-    .insert({ group_id: groupId, week_start: week, day, meal, recipe_id: recipeId });
+    .insert({ group_id: groupId, week_start: week, day, meal, recipe_id: recipeId, servings });
   if (error) throw error;
 }
 
