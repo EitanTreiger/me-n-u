@@ -51,6 +51,7 @@ function RootNavigator() {
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
+      <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
     </Stack>
   );
 }

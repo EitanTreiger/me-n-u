@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorBanner, Field, Icon, T } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { signInWithGoogle } from '@/lib/oauth';
 import { friendlyError, isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export default function SignIn() {
@@ -14,6 +15,21 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  async function google() {
+    setGoogleBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await signInWithGoogle();
+      // On web the page navigates away; keep the spinner until it does.
+      if (result !== 'redirecting') setGoogleBusy(false);
+    } catch (e) {
+      setError(friendlyError(e));
+      setGoogleBusy(false);
+    }
+  }
 
   const isSignUp = mode === 'sign-up';
   const canSubmit = email.includes('@') && password.length >= 6 && (!isSignUp || name.trim().length > 0);
@@ -61,6 +77,12 @@ export default function SignIn() {
           )}
 
           <View style={styles.form}>
+            <Button title="Continue with Google" icon="logo-google" variant="secondary" onPress={google} loading={googleBusy} />
+            <View style={styles.or}>
+              <View style={styles.orLine} />
+              <T variant="small">or with email</T>
+              <View style={styles.orLine} />
+            </View>
             {isSignUp && (
               <Field label="Your name" value={name} onChangeText={setName} placeholder="e.g. Jordan" autoComplete="name" />
             )}
@@ -137,6 +159,8 @@ const styles = StyleSheet.create({
   },
   center: { textAlign: 'center', maxWidth: 300 },
   form: { gap: Spacing.lg },
+  or: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  orLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   notice: { backgroundColor: Colors.primarySoft, borderRadius: Radius.md, padding: Spacing.md },
   switch: { alignItems: 'center', padding: Spacing.sm },
   link: { color: Colors.primaryStrong, fontWeight: '600' },
