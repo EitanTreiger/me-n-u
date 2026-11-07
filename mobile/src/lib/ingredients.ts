@@ -45,6 +45,40 @@ export function pantryHas(pantry: string[], ingredientName: string): boolean {
   });
 }
 
+export type PantryUse = {
+  pantryId: string;
+  name: string;
+  before: string; // "12 eggs"
+  after: number | null; // new amount, or null when it can't be worked out
+  ingredient: Ingredient;
+};
+
+/**
+ * What cooking these ingredients takes out of the pantry. Amounts are
+ * subtracted when pantry and recipe use the same unit; otherwise `after` is
+ * null and the cook decides whether the item is used up.
+ */
+export function pantryUsage(
+  pantry: { id: string; name: string; quantity: number; unit: string }[],
+  ingredients: Ingredient[],
+): PantryUse[] {
+  const uses: PantryUse[] = [];
+  for (const ing of ingredients) {
+    const item = pantry.find((p) => pantryHas([p.name], ing.name));
+    if (!item || uses.some((u) => u.pantryId === item.id) || ALWAYS_ON_HAND.has(normalizeName(ing.name))) continue;
+    const sameUnit = normalizeUnit(item.unit) === normalizeUnit(ing.unit);
+    const after = item.quantity > 0 && ing.quantity > 0 && sameUnit ? Math.max(0, item.quantity - ing.quantity) : null;
+    uses.push({
+      pantryId: item.id,
+      name: item.name,
+      before: item.quantity > 0 ? formatIngredient({ name: item.name, quantity: item.quantity, unit: item.unit }) : item.name,
+      after,
+      ingredient: ing,
+    });
+  }
+  return uses;
+}
+
 export function missingIngredients(pantry: string[], ingredients: Ingredient[]): Ingredient[] {
   return ingredients.filter((i) => !pantryHas(pantry, i.name));
 }

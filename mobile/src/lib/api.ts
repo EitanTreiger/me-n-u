@@ -6,35 +6,60 @@ import type { ConvertedRecipe, Ingredient, Meal, MenuItem, Recipe, RecipeSource,
 
 const RECIPE_SELECT = '*, author:profiles!recipes_author_id_fkey(display_name)';
 
-function withStats(recipes: Recipe[], stats: RecipeStats[]): RecipeWithStats[] {
+type Vote = { recipe_id: string; user_id: string };
+
+function withStats(recipes: Recipe[], stats: RecipeStats[], votes: Vote[], userId: string | undefined): RecipeWithStats[] {
   const byId = new Map(stats.map((s) => [s.recipe_id, s]));
-  return recipes.map((r) => ({
-    ...r,
-    stats: byId.get(r.id) ?? { recipe_id: r.id, rating_count: 0, avg_score: 0 },
-  }));
+  return recipes.map((r) => {
+    const mine = votes.filter((v) => v.recipe_id === r.id);
+    return {
+      ...r,
+      stats: byId.get(r.id) ?? { recipe_id: r.id, rating_count: 0, avg_score: 0 },
+      votes: mine.length,
+      myVote: mine.some((v) => v.user_id === userId),
+    };
+  });
 }
 
 export async function listRecipes(groupId: string): Promise<RecipeWithStats[]> {
-  const [recipes, stats] = await Promise.all([
+  const { data: userData } = await supabase.auth.getUser();
+  const [recipes, stats, votes] = await Promise.all([
     supabase.from('recipes').select(RECIPE_SELECT).eq('group_id', groupId).order('created_at', { ascending: false }),
     supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('group_id', groupId),
+    supabase.from('menu_votes').select('recipe_id, user_id, recipes!inner(group_id)').eq('recipes.group_id', groupId),
   ]);
   if (recipes.error) throw recipes.error;
   if (stats.error) throw stats.error;
-  return withStats(recipes.data as Recipe[], stats.data as RecipeStats[]);
+  return withStats(recipes.data as Recipe[], stats.data as RecipeStats[], (votes.data ?? []) as Vote[], userData.user?.id);
 }
 
 export async function getRecipe(id: string): Promise<{ recipe: RecipeWithStats; myScore: number | null; timesOnMenu: number }> {
   const { data: userData } = await supabase.auth.getUser();
-  const [recipe, stats, mine, menuCount] = await Promise.all([
+  const [recipe, stats, mine, menuCount, votes] = await Promise.all([
     supabase.from('recipes').select(RECIPE_SELECT).eq('id', id).single(),
     supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('recipe_id', id).maybeSingle(),
     supabase.from('recipe_ratings').select('score').eq('recipe_id', id).eq('user_id', userData.user?.id ?? '').maybeSingle(),
     supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('recipe_id', id),
+    supabase.from('menu_votes').select('recipe_id, user_id').eq('recipe_id', id),
   ]);
   if (recipe.error) throw recipe.error;
-  const [withS] = withStats([recipe.data as Recipe], stats.data ? [stats.data as RecipeStats] : []);
+  const [withS] = withStats(
+    [recipe.data as Recipe],
+    stats.data ? [stats.data as RecipeStats] : [],
+    (votes.data ?? []) as Vote[],
+    userData.user?.id,
+  );
   return { recipe: withS, myScore: mine.data?.score ?? null, timesOnMenu: menuCount.count ?? 0 };
+}
+
+/** Vote (or un-vote) for a recipe to go on the weekly menu. */
+export async function setMenuVote(recipeId: string, vote: boolean) {
+  const { data: userData } = await supabase.auth.getUser();
+  const q = vote
+    ? supabase.from('menu_votes').upsert({ recipe_id: recipeId, user_id: userData.user!.id })
+    : supabase.from('menu_votes').delete().eq('recipe_id', recipeId).eq('user_id', userData.user!.id);
+  const { error } = await q;
+  if (error) throw error;
 }
 
 export type RecipeInput = {
@@ -49,6 +74,7 @@ export type RecipeInput = {
   photo_path: string | null;
   image_url?: string | null;
   video_url: string | null;
+  step_timestamps?: number[] | null;
   source: RecipeSource;
 };
 
@@ -80,7 +106,7 @@ export async function uploadPhoto(groupId: string, uri: string, mimeType = 'imag
   return path;
 }
 
-async function invokeConvert(body: object): Promise<ConvertedRecipe> {
+async function callConverter<T>(body: object): Promise<T> {
   const { data, error } = await supabase.functions.invoke('convert-recipe', { body });
   if (error) {
     if (error instanceof FunctionsHttpError) {
@@ -89,7 +115,16 @@ async function invokeConvert(body: object): Promise<ConvertedRecipe> {
     }
     throw new Error("Couldn't reach the recipe converter. Check your connection.");
   }
-  return data.recipe as ConvertedRecipe;
+  return data as T;
+}
+
+async function invokeConvert(body: object): Promise<ConvertedRecipe> {
+  return (await callConverter<{ recipe: ConvertedRecipe }>(body)).recipe;
+}
+
+/** Read a receipt or shopping-list photo into pantry items. */
+export async function readReceipt(base64: string, mediaType: string): Promise<Ingredient[]> {
+  return (await callConverter<{ items: Ingredient[] }>({ receiptBase64: base64, mediaType })).items;
 }
 
 export function convertPhoto(base64: string, mediaType: string) {
@@ -101,10 +136,11 @@ export function convertText(text: string) {
 }
 
 export async function convertYoutube(url: string) {
-  // Send the description too when this device can read it: the server can
-  // then convert from text in seconds instead of watching the video.
+  // Send the transcript and description when this device can read them: the
+  // server then writes the recipe (with step timestamps) from text in
+  // seconds instead of watching the video.
   const text = await fetchVideoText(url);
-  return invokeConvert({ youtubeUrl: url, title: text?.title, description: text?.description });
+  return invokeConvert({ youtubeUrl: url, title: text?.title, description: text?.description, transcript: text?.transcript });
 }
 
 // --- Weekly menu -----------------------------------------------------------

@@ -11,14 +11,20 @@ import { listRecipes } from '@/lib/api';
 import { missingIngredients } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
+import { useLayout } from '@/hooks/use-layout';
 import { DIETARY_TAGS, type RecipeWithStats } from '@/lib/types';
 import { useGroups } from '@/providers/groups';
 import { usePantry } from '@/providers/pantry';
 
-type Sort = 'top' | 'new' | 'ready';
+type Sort = 'top' | 'votes' | 'new' | 'ready';
 
-const SORTS: { key: Sort; label: string; icon: 'trophy-outline' | 'time-outline' | 'checkmark-circle-outline' }[] = [
+const SORTS: {
+  key: Sort;
+  label: string;
+  icon: 'trophy-outline' | 'thumbs-up-outline' | 'time-outline' | 'checkmark-circle-outline';
+}[] = [
   { key: 'top', label: 'Top rated', icon: 'trophy-outline' },
+  { key: 'votes', label: 'Most votes', icon: 'thumbs-up-outline' },
   { key: 'new', label: 'Newest', icon: 'time-outline' },
   { key: 'ready', label: 'Ready to cook', icon: 'checkmark-circle-outline' },
 ];
@@ -32,6 +38,7 @@ function RecipesList() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('top');
   const [tags, setTags] = useState<string[]>([]);
+  const { columns } = useLayout();
 
   const groupId = active!.id;
 
@@ -64,6 +71,9 @@ function RecipesList() {
     });
     if (sort === 'top') {
       list = [...list].sort((a, b) => consensusScore(b.stats) - consensusScore(a.stats) || b.stats.rating_count - a.stats.rating_count);
+    } else if (sort === 'votes') {
+      // Recipes members want on the menu; unvoted ones drop out of this view.
+      list = list.filter((r) => r.votes > 0).sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats));
     } else if (sort === 'ready') {
       list = [...list].sort(
         (a, b) =>
@@ -136,17 +146,26 @@ function RecipesList() {
           action={<Button title="Add a recipe" icon="add" onPress={() => router.push('/recipe/new')} />}
         />
       ) : visible.length === 0 ? (
-        <EmptyState icon="search-outline" title="Nothing matches" body="Try a different search or clear the filters." />
+        sort === 'votes' ? (
+          <EmptyState
+            icon="thumbs-up-outline"
+            title="No votes yet"
+            body="Open a recipe and tap “Vote for the menu” to suggest it for the weekly menu."
+          />
+        ) : (
+          <EmptyState icon="search-outline" title="Nothing matches" body="Try a different search or clear the filters." />
+        )
       ) : (
         <View style={styles.list}>
           {visible.map((r, i) => (
-            <RecipeCard
-              key={r.id}
-              recipe={r}
-              pantry={pantry}
-              rank={sort === 'top' && r.stats.rating_count > 0 ? i + 1 : undefined}
-              onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: r.id } })}
-            />
+            <View key={r.id} style={{ width: columns > 1 ? `${100 / columns - 1.5}%` : '100%' }}>
+              <RecipeCard
+                recipe={r}
+                pantry={pantry}
+                rank={(sort === 'top' && r.stats.rating_count > 0) || sort === 'votes' ? i + 1 : undefined}
+                onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: r.id } })}
+              />
+            </View>
           ))}
         </View>
       )}
@@ -185,5 +204,5 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 16, color: Colors.text, paddingVertical: Spacing.sm },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.md },
   tagRow: { gap: Spacing.sm, paddingVertical: Spacing.md },
-  list: { gap: Spacing.md, marginTop: Spacing.xs },
+  list: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.md, marginTop: Spacing.xs },
 });

@@ -33,6 +33,7 @@ export type Recipe = {
   photo_path: string | null;
   image_url: string | null;
   video_url: string | null;
+  step_timestamps: number[] | null; // seconds into the video for each step; -1 = unknown
   source: RecipeSource;
   created_at: string;
   author?: { display_name: string } | null;
@@ -44,7 +45,11 @@ export type RecipeStats = {
   avg_score: number;
 };
 
-export type RecipeWithStats = Recipe & { stats: RecipeStats };
+export type RecipeWithStats = Recipe & {
+  stats: RecipeStats;
+  votes: number; // members who want it on the menu
+  myVote: boolean;
+};
 
 export type Meal = 'breakfast' | 'lunch' | 'dinner';
 
@@ -59,7 +64,13 @@ export type MenuItem = {
   recipe?: Recipe | null;
 };
 
-export type PantryItem = { id: string; name: string; created_at: string };
+export type PantryItem = {
+  id: string;
+  name: string;
+  quantity: number; // 0 = amount not tracked
+  unit: string;
+  created_at: string;
+};
 
 export type ConvertedRecipe = {
   title: string;
@@ -68,6 +79,7 @@ export type ConvertedRecipe = {
   total_minutes: number;
   ingredients: Ingredient[];
   steps: string[];
+  step_times?: number[];
   dietary_tags: string[];
 };
 

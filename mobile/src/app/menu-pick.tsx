@@ -55,7 +55,8 @@ export default function MenuPick() {
   useEffect(() => {
     if (!active) return;
     listRecipes(active.id)
-      .then((r) => setRecipes(r.sort((a, b) => consensusScore(b.stats) - consensusScore(a.stats))))
+      // Recipes members voted for come first, then the best rated.
+      .then((r) => setRecipes(r.sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats))))
       .catch((e) => setError(friendlyError(e)));
   }, [active]);
 
@@ -153,11 +154,16 @@ export default function MenuPick() {
                         <T variant="subheading" numberOfLines={1}>
                           {r.title}
                         </T>
-                        {r.stats.rating_count > 0 ? (
-                          <Stars value={r.stats.avg_score} size={12} />
-                        ) : (
-                          <T variant="small">No ratings yet</T>
-                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          {r.stats.rating_count > 0 ? (
+                            <Stars value={r.stats.avg_score} size={12} />
+                          ) : (
+                            <T variant="small">No ratings yet</T>
+                          )}
+                          {r.votes > 0 && (
+                            <Chip label={`${r.votes} vote${r.votes === 1 ? '' : 's'}`} icon="thumbs-up" tone="success" />
+                          )}
+                        </View>
                       </View>
                       <Icon
                         name={selected ? 'checkmark-circle' : 'ellipse-outline'}

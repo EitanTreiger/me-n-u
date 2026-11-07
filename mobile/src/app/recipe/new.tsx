@@ -48,6 +48,8 @@ export default function NewRecipe() {
   const [ingredientsText, setIngredientsText] = useState('');
   const [stepsText, setStepsText] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  // Seconds into the video for each converted step (YouTube only).
+  const [stepTimes, setStepTimes] = useState<number[] | null>(null);
 
   const ingredients: Ingredient[] = ingredientsText
     .split('\n')
@@ -69,6 +71,7 @@ export default function NewRecipe() {
     setIngredientsText(r.ingredients.map(formatIngredient).join('\n'));
     setStepsText(r.steps.join('\n'));
     setTags(r.dietary_tags.filter((t) => (DIETARY_TAGS as readonly string[]).includes(t)));
+    setStepTimes(r.step_times?.length === r.steps.length && r.step_times.some((t) => t >= 0) ? r.step_times : null);
     setConverted(true);
   }
 
@@ -162,6 +165,8 @@ export default function NewRecipe() {
         photo_path,
         image_url,
         video_url: mode === 'youtube' && videoUrl.trim() ? videoUrl.trim() : null,
+        // Keep timestamps only if the steps weren't added to or removed while editing.
+        step_timestamps: mode === 'youtube' && stepTimes && stepTimes.length === steps.length ? stepTimes : null,
         source,
       });
       router.replace({ pathname: '/recipe/[id]', params: { id } });

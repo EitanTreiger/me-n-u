@@ -7,6 +7,7 @@ import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useLayout } from '@/hooks/use-layout';
 import { listMenu, removeMenuItem } from '@/lib/api';
 import { friendlyError } from '@/lib/supabase';
 import { MEALS, type Meal, type MenuItem } from '@/lib/types';
@@ -54,6 +55,7 @@ function MenuPlanner() {
   }
 
   const today = todayIndex(week);
+  const { columns } = useLayout();
   const plannedCount = items?.length ?? 0;
 
   return (
@@ -81,10 +83,13 @@ function MenuPlanner() {
               onPress={() => router.navigate({ pathname: '/groceries', params: { week } })}
             />
           )}
+          <View style={styles.days}>
           {DAY_NAMES.map((dayName, day) => {
             const isToday = day === today;
             return (
-              <Card key={day} style={[styles.day, isToday && styles.today]}>
+              <Card
+                key={day}
+                style={[styles.day, isToday && styles.today, { width: columns > 1 ? `${100 / columns - 1.5}%` : '100%' }]}>
                 <View style={styles.dayHeader}>
                   <T variant="subheading">{dayName}</T>
                   <T variant="small">{formatShort(dayDate(week, day))}</T>
@@ -150,6 +155,7 @@ function MenuPlanner() {
               </Card>
             );
           })}
+          </View>
         </View>
       )}
     </Screen>
@@ -165,6 +171,7 @@ export default function MenuTab() {
 }
 
 const styles = StyleSheet.create({
+  days: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.md },
   day: { paddingVertical: Spacing.md },
   today: { borderColor: Colors.primary, borderWidth: 2 },
   dayHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.xs },

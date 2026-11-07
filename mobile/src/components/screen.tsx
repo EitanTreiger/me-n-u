@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
+import { useLayout } from '@/hooks/use-layout';
 
 import { T } from './ui';
 
@@ -28,6 +29,7 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
 }) {
+  const { contentWidth } = useLayout();
   const header = title ? (
     <View style={styles.header}>
       <View style={{ flex: 1, gap: 2 }}>
@@ -42,7 +44,7 @@ export function Screen({
     <SafeAreaView style={styles.safe} edges={edges}>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={[styles.content, contentStyle]}
+          contentContainerStyle={[styles.content, { maxWidth: contentWidth }, contentStyle]}
           keyboardShouldPersistTaps="handled"
           refreshControl={
             onRefresh ? (
@@ -53,7 +55,7 @@ export function Screen({
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.content, { flex: 1 }, contentStyle]}>
+        <View style={[styles.content, { flex: 1, maxWidth: contentWidth }, contentStyle]}>
           {header}
           {children}
         </View>
@@ -68,7 +70,6 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingBottom: Spacing.xxl * 2,
     width: '100%',
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
   header: {
