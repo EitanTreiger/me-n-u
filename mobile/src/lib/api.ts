@@ -122,6 +122,20 @@ async function invokeConvert(body: object): Promise<ConvertedRecipe> {
   return (await callConverter<{ recipe: ConvertedRecipe }>(body)).recipe;
 }
 
+/**
+ * Have Gemini pick a photo that really shows this dish (from Wikipedia,
+ * Wikimedia Commons and TheMealDB) and save it on the recipe. Runs in the
+ * background after saving, since it can take up to ~30 s.
+ */
+export async function attachRecipeImage(recipeId: string, title: string, description: string) {
+  try {
+    const { url } = await callConverter<{ url: string | null }>({ pickImage: title, description });
+    if (url) await supabase.from('recipes').update({ image_url: url }).eq('id', recipeId);
+  } catch {
+    // No picture is fine: the card shows the placeholder.
+  }
+}
+
 /** Read a receipt or shopping-list photo into pantry items. */
 export async function readReceipt(base64: string, mediaType: string): Promise<Ingredient[]> {
   return (await callConverter<{ items: Ingredient[] }>({ receiptBase64: base64, mediaType })).items;

@@ -16,6 +16,8 @@ type PantryState = {
   /** Add "5 eggs"-style lines or parsed items; amounts merge into existing items. */
   add: (entries: (string | Ingredient)[]) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Set an item's amount; 0 removes it. */
+  setQuantity: (id: string, quantity: number) => Promise<void>;
   apply: (changes: PantryChange[]) => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -60,7 +62,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
         const parsed = entries
           .map((e) => (typeof e === 'string' ? parseIngredientLine(e) : e))
           .filter((e): e is Ingredient => !!e && !!e.name.trim())
-          .map((e) => ({ name: e.name.split(',')[0].trim().toLowerCase(), quantity: e.quantity || 0, unit: normalizeUnit(e.unit ?? '') }));
+          // No number given ("eggs") counts as 1.
+          .map((e) => ({ name: e.name.split(',')[0].trim().toLowerCase(), quantity: e.quantity || 1, unit: normalizeUnit(e.unit ?? '') }));
         const inserts: { name: string; quantity: number; unit: string }[] = [];
         const updates: { id: string; quantity: number; unit: string }[] = [];
         for (const e of parsed) {
@@ -95,6 +98,18 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       remove: async (id) => {
         setItems((prev) => prev.filter((i) => i.id !== id));
         const { error } = await supabase.from('pantry_items').delete().eq('id', id);
+        if (error) await refresh();
+      },
+      setQuantity: async (id, quantity) => {
+        // Update the screen straight away, then save.
+        setItems((prev) =>
+          quantity <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, quantity } : i)),
+        );
+        const q =
+          quantity <= 0
+            ? supabase.from('pantry_items').delete().eq('id', id)
+            : supabase.from('pantry_items').update({ quantity }).eq('id', id);
+        const { error } = await q;
         if (error) await refresh();
       },
       apply: async (changes) => {

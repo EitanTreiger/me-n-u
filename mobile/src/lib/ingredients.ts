@@ -127,7 +127,14 @@ export function displayUnit(unit: string, quantity: number): string {
 
 /** "3 onion" -> "3 onions" for countable items with no unit. */
 export function displayName(name: string, unit: string, quantity: number): string {
-  if (unit || quantity <= 1) return name;
+  if (unit) return name;
+  if (quantity > 0 && quantity <= 1) {
+    // "1 eggs" -> "1 egg" (only simple plurals; leave words like "hummus" alone)
+    return name.replace(/([a-z]{3,}?)(oes|ies|s)\b(?=[^,]*$|,)/i, (m, stem: string, end: string) =>
+      /(sses|ss|us|is)$/i.test(m) ? m : end === 'ies' ? `${stem}y` : end === 'oes' ? `${stem}o` : stem,
+    );
+  }
+  if (quantity <= 1) return name;
   const [head, ...rest] = name.split(',');
   const words = head.trimEnd().split(' ');
   const last = words[words.length - 1];

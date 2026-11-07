@@ -12,7 +12,7 @@ export function useLayout() {
     wide,
     /** Max width for page content. */
     contentWidth: wide ? 1200 : 720,
-    /** Columns for card grids. */
-    columns: width >= 1300 ? 3 : wide ? 2 : 1,
+    /** Columns for card grids: two on computers, one on phones. */
+    columns: wide ? 2 : 1,
   };
 }
