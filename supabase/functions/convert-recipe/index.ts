@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) return json({ error: 'GEMINI_API_KEY is not set on the server' }, 500);
 
-  let body: { imageBase64?: string; mediaType?: string; youtubeUrl?: string; title?: string; description?: string };
+  let body: { imageBase64?: string; mediaType?: string; youtubeUrl?: string; title?: string; description?: string; text?: string };
   try {
     body = await req.json();
   } catch {
@@ -231,7 +231,16 @@ Deno.serve(async (req) => {
   const parts: Part[] = [];
   let isVideo = false;
 
-  if (body.imageBase64) {
+  if (body.text) {
+    // Recipe pasted from a website, email or document.
+    if (body.text.length > 50_000) return json({ error: 'That text is too long. Paste just the recipe.' }, 400);
+    parts.push({
+      text: [
+        'Extract the recipe from this pasted text. It may include extra website text, ads or comments: ignore anything that is not part of the recipe.',
+        `<pasted_text>${body.text}</pasted_text>`,
+      ].join('\n'),
+    });
+  } else if (body.imageBase64) {
     const mediaType = body.mediaType ?? 'image/jpeg';
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(mediaType)) {
       return json({ error: 'Unsupported image type' }, 400);
@@ -286,7 +295,7 @@ Deno.serve(async (req) => {
     });
     parts.push({ text: 'Extract the recipe from this cooking video.' });
   } else {
-    return json({ error: 'Send imageBase64 or youtubeUrl' }, 400);
+    return json({ error: 'Send text, imageBase64 or youtubeUrl' }, 400);
   }
 
   try {
