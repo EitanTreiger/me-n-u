@@ -266,7 +266,7 @@ export default function RecipeDetail() {
               <T style={{ flex: 1 }}>
                 {u.after === null
                   ? `${u.before}: used it all up`
-                  : `${u.before} → ${u.after > 0 ? formatIngredient({ name: u.name, quantity: u.after, unit: u.ingredient.unit }) : 'none left'}`}
+                  : `${u.before} → ${u.after > 0 ? formatIngredient({ name: u.name, quantity: u.after, unit: u.unit }) : 'none left'}`}
               </T>
             </Pressable>
           ))}

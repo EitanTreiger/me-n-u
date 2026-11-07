@@ -1,3 +1,4 @@
+import { convertWeight, isStaple } from './pantry-units';
 import type { Ingredient } from './types';
 
 // Things nearly every kitchen has; never reported as "missing".
@@ -51,6 +52,7 @@ export type PantryUse = {
   before: string; // "12 eggs"
   after: number | null; // new amount, or null when it can't be worked out
   ingredient: Ingredient;
+  unit: string; // the pantry item's unit, for showing `after`
 };
 
 /**
@@ -66,14 +68,20 @@ export function pantryUsage(
   for (const ing of ingredients) {
     const item = pantry.find((p) => pantryHas([p.name], ing.name));
     if (!item || uses.some((u) => u.pantryId === item.id) || ALWAYS_ON_HAND.has(normalizeName(ing.name))) continue;
-    const sameUnit = normalizeUnit(item.unit) === normalizeUnit(ing.unit);
-    const after = item.quantity > 0 && ing.quantity > 0 && sameUnit ? Math.max(0, item.quantity - ing.quantity) : null;
+    // Salt, spices and other staples are never used up.
+    if (isStaple(item.name) || isStaple(ing.name)) continue;
+    const pantryUnit = normalizeUnit(item.unit);
+    const used =
+      pantryUnit === normalizeUnit(ing.unit) ? ing.quantity : convertWeight(ing.quantity, normalizeUnit(ing.unit), pantryUnit);
+    const after =
+      item.quantity > 0 && ing.quantity > 0 && used !== null ? Math.max(0, Math.round((item.quantity - used) * 100) / 100) : null;
     uses.push({
       pantryId: item.id,
       name: item.name,
       before: item.quantity > 0 ? formatIngredient({ name: item.name, quantity: item.quantity, unit: item.unit }) : item.name,
       after,
       ingredient: ing,
+      unit: item.unit,
     });
   }
   return uses;

@@ -103,7 +103,9 @@ Only add a dietary tag when the ingredient list clearly supports it.
 If the input is a photo of a finished dish with no written recipe, set is_recipe to true only if you can confidently identify the dish, and give a simple, standard home version of it.`;
 
 const RECEIPT_PROMPT = `This is a photo of a grocery receipt or a shopping list. List the food and cooking items on it, with how many or how much of each.
-Turn store abbreviations into plain names ("GRN ONION" -> "green onions", "LG EGGS 12CT" -> 12 eggs). Skip non-food items, bags, taxes, totals and discounts.`;
+Turn store abbreviations into plain names ("GRN ONION" -> "green onions", "LG EGGS 12CT" -> 12 eggs). Skip non-food items, bags, taxes, totals and discounts.
+Use the units a grocery store sells in: meat, fish and loose produce in lb (convert kg or g to lb); herbs and green onions by the bunch; lettuce, cabbage and garlic by the head; canned goods by the can; eggs and other packaged items as a count.
+For salt, spices, dried herbs, baking soda/powder and similar seasonings use quantity 0 and an empty unit: they are tracked as in stock or not.`;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

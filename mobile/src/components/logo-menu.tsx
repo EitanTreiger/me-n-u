@@ -56,17 +56,9 @@ export function LogoMenu() {
 }
 
 const styles = StyleSheet.create({
-  logoButton: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: { width: 30, height: 30 },
+  // Just the logo, no box behind it.
+  logoButton: { alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 40, height: 40 },
   backdrop: { flex: 1, backgroundColor: 'rgba(30,43,34,0.12)' },
   menu: {
     position: 'absolute',

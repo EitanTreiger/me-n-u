@@ -8,6 +8,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
 import { formatIngredient, pantryHas } from '@/lib/ingredients';
+import { isStaple, stepFor } from '@/lib/pantry-units';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
 
@@ -82,8 +83,8 @@ export default function PantryTab() {
 
   return (
     <Screen
-      title="My pantry"
-      subtitle="What you already have. Recipes show what you still need to buy."
+      title="Pantry"
+      subtitle="Your community's shared pantry. Recipes show what you still need to buy."
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -133,7 +134,7 @@ export default function PantryTab() {
         </>
       )}
 
-      <SectionHeader title={`In my pantry · ${pantry.items.length}`} />
+      <SectionHeader title={`In the pantry · ${pantry.items.length}`} />
       {pantry.loading ? (
         <Loading />
       ) : pantry.items.length === 0 ? (
@@ -146,36 +147,52 @@ export default function PantryTab() {
         </Card>
       ) : (
         <Card style={styles.list}>
-          {pantry.items.map((item, i) => (
-            <View key={item.id}>
-              {i > 0 && <Divider />}
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <T style={styles.itemText} numberOfLines={1}>
-                    {formatIngredient({ name: item.name, quantity: item.quantity || 1, unit: item.unit })}
-                  </T>
+          {pantry.items.map((item, i) => {
+            const staple = isStaple(item.name);
+            const step = stepFor(item.unit);
+            return (
+              <View key={item.id}>
+                {i > 0 && <Divider />}
+                <View style={styles.row}>
+                  <View style={{ flex: 1 }}>
+                    <T style={styles.itemText} numberOfLines={1}>
+                      {staple ? item.name : formatIngredient({ name: item.name, quantity: item.quantity || 1, unit: item.unit })}
+                    </T>
+                  </View>
+                  {staple ? (
+                    // Salt, spices and the like: just "have it" or not.
+                    <Chip label="In stock" tone="success" icon="checkmark-circle" />
+                  ) : (
+                    <>
+                      <Stepper
+                        value={Math.round((item.quantity || 1) / step) * step}
+                        min={0}
+                        max={999}
+                        step={step}
+                        label={item.name}
+                        onChange={(n) => pantry.setQuantity(item.id, n)}
+                      />
+                      <T variant="small" style={styles.unit}>
+                        {item.unit}
+                      </T>
+                    </>
+                  )}
+                  <IconButton
+                    name="trash-outline"
+                    size={18}
+                    color={Colors.textMuted}
+                    label={`Remove ${item.name}`}
+                    onPress={() => pantry.remove(item.id)}
+                  />
                 </View>
-                <Stepper
-                  value={Math.round(item.quantity || 1)}
-                  min={0}
-                  max={999}
-                  label={item.name}
-                  onChange={(n) => pantry.setQuantity(item.id, n)}
-                />
-                {!!item.unit && (
-                  <T variant="small" style={styles.unit}>
-                    {item.unit}
-                  </T>
-                )}
-                <IconButton name="trash-outline" size={18} color={Colors.textMuted} label={`Remove ${item.name}`} onPress={() => pantry.remove(item.id)} />
               </View>
-            </View>
-          ))}
+            );
+          })}
         </Card>
       )}
       {pantry.items.length > 0 && (
         <T variant="small" style={{ marginTop: Spacing.md }}>
-          Use − and + to update amounts. Going below 1 removes the item.
+          {"Shared by everyone in your community. Use − and + to update amounts; going to 0 removes the item. Spices and salt are just in stock or not, and aren't used up when you cook."}
         </T>
       )}
     </Screen>

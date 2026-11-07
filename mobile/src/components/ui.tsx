@@ -227,22 +227,25 @@ export function Stepper({
   onChange,
   min = 1,
   max = 500,
+  step = 1,
   label,
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
   max?: number;
+  /** e.g. 0.5 for half pounds */
+  step?: number;
   label: string;
 }) {
-  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n)));
+  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n / step) * step));
   return (
     <View style={styles.stepper}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Fewer ${label}`}
         disabled={value <= min}
-        onPress={() => onChange(clamp(value - 1))}
+        onPress={() => onChange(clamp(value - step))}
         hitSlop={6}
         style={({ pressed }) => [styles.stepperButton, (pressed || value <= min) && styles.disabled]}>
         <Icon name="remove" size={18} color={Colors.text} />
@@ -251,10 +254,10 @@ export function Stepper({
         accessibilityLabel={label}
         value={String(value)}
         onChangeText={(t) => {
-          const n = Number(t.replace(/[^0-9]/g, ''));
+          const n = Number(t.replace(step < 1 ? /[^0-9.]/g : /[^0-9]/g, ''));
           if (n) onChange(clamp(n));
         }}
-        keyboardType="number-pad"
+        keyboardType={step < 1 ? 'decimal-pad' : 'number-pad'}
         selectTextOnFocus
         style={styles.stepperInput}
       />
@@ -262,7 +265,7 @@ export function Stepper({
         accessibilityRole="button"
         accessibilityLabel={`More ${label}`}
         disabled={value >= max}
-        onPress={() => onChange(clamp(value + 1))}
+        onPress={() => onChange(clamp(value + step))}
         hitSlop={6}
         style={({ pressed }) => [styles.stepperButton, (pressed || value >= max) && styles.disabled]}>
         <Icon name="add" size={18} color={Colors.text} />

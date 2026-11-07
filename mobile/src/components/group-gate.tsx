@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { useLayout } from '@/hooks/use-layout';
 import { friendlyError } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
@@ -25,7 +24,6 @@ export function GroupGate({ title, children }: { title: string; children: ReactN
 export function CommunitySetup({ title }: { title: string }) {
   const { displayName } = useAuth();
   const { createGroup, joinGroup } = useGroups();
-  const { wide } = useLayout();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
@@ -53,7 +51,8 @@ export function CommunitySetup({ title }: { title: string }) {
         </T>
       </View>
 
-      <View style={[styles.options, wide && styles.optionsWide]}>
+      {/* Stacked on every screen size: start first, join below. */}
+      <View style={styles.options}>
         <Card style={styles.option}>
           <View style={styles.optionHeader}>
             <View style={styles.optionIcon}>
@@ -110,8 +109,7 @@ export function CommunitySetup({ title }: { title: string }) {
 const styles = StyleSheet.create({
   intro: { gap: Spacing.xs, marginBottom: Spacing.lg },
   options: { gap: Spacing.md },
-  optionsWide: { flexDirection: 'row', alignItems: 'stretch' },
-  option: { flex: 1, gap: Spacing.md },
+  option: { gap: Spacing.md },
   optionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   optionIcon: {
     width: 36,
