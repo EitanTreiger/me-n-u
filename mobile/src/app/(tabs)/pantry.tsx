@@ -7,8 +7,8 @@ import { Button, Card, Chip, Divider, EmptyState, ErrorBanner, Field, IconButton
 import { Colors, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
-import { formatIngredient, pantryHas } from '@/lib/ingredients';
-import { stepFor } from '@/lib/pantry-units';
+import { formatIngredient, formatQuantity, pantryHas } from '@/lib/ingredients';
+import { pantryLabel, stepFor } from '@/lib/pantry-units';
 import { friendlyError } from '@/lib/supabase';
 import { usePantry } from '@/providers/pantry';
 
@@ -157,7 +157,11 @@ export default function PantryTab() {
                 <View style={styles.row}>
                   <View style={{ flex: 1 }}>
                     <T style={styles.itemText} numberOfLines={1}>
-                      {staple ? item.name : formatIngredient({ name: item.name, quantity: item.quantity, unit: item.unit })}
+                      {staple
+                        ? item.name
+                        : item.unit
+                          ? pantryLabel(item.name, item.quantity, item.unit, formatQuantity)
+                          : formatIngredient({ name: item.name, quantity: item.quantity, unit: '' })}
                     </T>
                   </View>
                   {staple ? (
@@ -173,9 +177,6 @@ export default function PantryTab() {
                         label={item.name}
                         onChange={(n) => pantry.setQuantity(item.id, n)}
                       />
-                      <T variant="small" style={styles.unit}>
-                        {item.unit}
-                      </T>
                     </>
                   )}
                   <IconButton
@@ -208,5 +209,4 @@ const styles = StyleSheet.create({
   list: { paddingVertical: Spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
   itemText: { fontSize: 15, fontWeight: '500' },
-  unit: { width: 34 },
 });

@@ -46,8 +46,11 @@ export function isHardToMeasure(name: string): boolean {
 
 /** A unit that measures an amount (2 tbsp, 500 ml, 1 lb), not just a count. */
 export function isMeasureUnit(unit: string): boolean {
-  return ['tsp', 'tbsp', 'cup', 'ml', 'l', 'g', 'kg', 'oz', 'lb', 'fl oz', 'bottle', 'jar', 'can', 'bag', 'box'].includes(unit);
+  return MEASURE_UNITS.includes(unit);
 }
+
+/** Real kitchen measurements only: no "bag", "box", "bunch" or "head". */
+const MEASURE_UNITS = ['tsp', 'tbsp', 'cup', 'ml', 'l', 'g', 'kg', 'oz', 'lb', 'fl oz', 'can'];
 
 const BY_POUND = [
   // meat and fish
@@ -57,26 +60,47 @@ const BY_POUND = [
   // loose produce sold by weight
   'potato', 'sweet potato', 'carrot', 'tomato', 'apple', 'pear', 'banana', 'grape', 'zucchini', 'eggplant',
   'mushroom', 'green bean', 'beet', 'parsnip', 'turnip', 'squash', 'peach', 'plum', 'cherry', 'onion',
-  'ginger root',
+  'ginger root', 'cabbage', 'cauliflower', 'broccoli', 'kale', 'asparagus', 'pasta', 'spaghetti', 'macaroni',
+  'penne', 'noodle', 'lasagna', 'fettuccine', 'cheese', 'butter',
 ];
 
-const BY_BUNCH = ['cilantro', 'parsley', 'mint', 'basil', 'dill', 'green onion', 'scallion', 'kale', 'chard', 'asparagus'];
-const BY_HEAD = ['lettuce', 'romaine', 'cabbage', 'cauliflower', 'broccoli', 'garlic'];
+// Dry goods and fresh herbs are measured in cups, like recipes use them.
+const BY_CUP = /\b(rice|flour|sugar|brown sugar|oats|lentils|quinoa|couscous|bulgur|dried beans|chickpeas|breadcrumbs|panko|cilantro|parsley|mint|basil|dill|spinach|frozen peas|corn|cereal|nuts|peanuts|almonds|chocolate chips|raisins)\b/;
 
 /**
- * The unit a grocery store sells this in ('' = count, like 6 eggs).
- * Used as the default when something is added to the pantry without a unit.
+ * The real measurement this is usually counted in ('' = a count, like 6 eggs):
+ * pounds for meat, fish, produce, pasta and cheese; cups for dry goods and
+ * herbs; cans for canned goods. Used when something is added without a unit.
  */
 export function groceryUnit(name: string): string {
   const n = name.toLowerCase();
   if (isStaple(n) || LIQUID_WORDS.test(n)) return '';
   if (/\b(canned|can of)\b/.test(n)) return 'can';
-  if (/\b(pasta|spaghetti|macaroni|penne|noodles?|lasagna|fettuccine|cereal|crackers)\b/.test(n)) return 'box';
-  if (/\b(rice|flour|sugar|oats|lentils|quinoa|couscous|bulgur|dried beans|chickpeas)\b/.test(n) && !/\bcooked\b/.test(n)) return 'bag';
-  if (BY_HEAD.some((w) => isWord(n, w))) return 'head';
-  if (BY_BUNCH.some((w) => isWord(n, w))) return 'bunch';
+  if (BY_CUP.test(n)) return 'cup';
   if (BY_POUND.some((w) => isWord(n, w))) return 'lb';
   return '';
+}
+
+const UNIT_WORDS: Record<string, [string, string]> = {
+  lb: ['pound', 'pounds'],
+  cup: ['cup', 'cups'],
+  tbsp: ['tbsp', 'tbsp'],
+  tsp: ['tsp', 'tsp'],
+  oz: ['oz', 'oz'],
+  'fl oz': ['fl oz', 'fl oz'],
+  g: ['g', 'g'],
+  kg: ['kg', 'kg'],
+  ml: ['ml', 'ml'],
+  l: ['liter', 'liters'],
+  can: ['can', 'cans'],
+};
+
+/** Pantry label with the unit in words: "2 cups of rice", "1.5 pounds of chicken", "6 eggs". */
+export function pantryLabel(name: string, quantity: number, unit: string, formatQuantity: (q: number) => string): string {
+  const q = formatQuantity(quantity) || String(quantity);
+  const words = UNIT_WORDS[unit];
+  if (!words) return `${q} ${name}`;
+  return `${q} ${quantity === 1 ? words[0] : words[1]} of ${name}`;
 }
 
 const WEIGHT_IN_LB: Record<string, number> = { lb: 1, oz: 1 / 16, g: 1 / 453.6, kg: 2.2046 };
@@ -88,7 +112,7 @@ export function convertWeight(quantity: number, from: string, to: string): numbe
   return a && b ? (quantity * a) / b : null;
 }
 
-/** Step for the pantry's - / + buttons: half pounds, whole counts. */
+/** Step for the pantry's - / + buttons: half pounds and cups, whole counts. */
 export function stepFor(unit: string): number {
-  return unit === 'lb' || unit === 'kg' ? 0.5 : 1;
+  return unit === 'lb' || unit === 'kg' || unit === 'cup' ? 0.5 : 1;
 }
