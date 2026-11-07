@@ -103,6 +103,42 @@ export function pantryLabel(name: string, quantity: number, unit: string, format
   return `${q} ${quantity === 1 ? words[0] : words[1]} of ${name}`;
 }
 
+// ---------------------------------------------------------------------------
+// Pantry sections: perishables grouped by kind (they share measurements),
+// then the basics (spices, oils, sauces) at the bottom.
+// ---------------------------------------------------------------------------
+
+export const PANTRY_SECTIONS = [
+  'Meat & fish',
+  'Vegetables',
+  'Fruit',
+  'Dairy & eggs',
+  'Grains, pasta & baking',
+  'Canned & jarred',
+  'Other',
+  'Basics: spices, oils & sauces',
+] as const;
+export type PantrySection = (typeof PANTRY_SECTIONS)[number];
+
+const MEAT_FISH = /\b(chicken|beef|steak|pork|lamb|turkey|veal|mince|sausages?|ham|bacon|brisket|ribs|chuck|sirloin|ribeye|tenderloin|loin|fish|salmon|cod|tuna|tilapia|shrimp|prawns?|scallops?|crab|lobster|mussels?|clams?|chorizo|pepperoni|meatballs?|ground (beef|pork|turkey|lamb|chicken))\b/;
+const VEGETABLES = /\b(onions?|garlic|potato(es)?|sweet potato(es)?|carrots?|tomato(es)?|peppers?|zucchini|eggplants?|mushrooms?|broccoli|cauliflower|cabbage|lettuce|romaine|spinach|kale|chard|celery|cucumbers?|peas|green beans?|corn|asparagus|beets?|parsnips?|turnips?|squash|leeks?|shallots?|scallions?|green onions?|bok choy|bean sprouts|avocados?|ginger|cilantro|parsley|basil|mint|dill|jalapenos?|chilies|chillies)\b/;
+const FRUIT = /\b(apples?|bananas?|oranges?|lemons?|limes?|grapes?|strawberries|blueberries|raspberries|berries|peaches|peach|pears?|plums?|cherries|watermelon|melon|pineapple|mango(es)?|kiwi|apricots?|raisins|dates)\b/;
+const DAIRY_EGGS = /\b(eggs?|cheese|cheddar|mozzarella|parmesan|feta|ricotta|paneer|gruyere|butter|yogurt|yoghurt|cream cheese|sour cream|cheese curds)\b/;
+const GRAINS = /\b(rice|flour|sugar|oats|pasta|spaghetti|macaroni|penne|noodles?|lasagna|fettuccine|bread|tortillas?|pita|buns?|rolls?|baguette|couscous|quinoa|bulgur|lentils|beans|chickpeas|cereal|crackers|breadcrumbs|panko|cornmeal|chocolate chips)\b/;
+
+/** Which pantry section an item belongs in. Items with no amount go to the basics. */
+export function pantrySection(name: string, quantity: number): PantrySection {
+  const n = name.toLowerCase();
+  if (quantity <= 0 || isHardToMeasure(n)) return 'Basics: spices, oils & sauces';
+  if (/\b(canned|can of|jar of)\b/.test(n)) return 'Canned & jarred';
+  if (MEAT_FISH.test(n)) return 'Meat & fish';
+  if (DAIRY_EGGS.test(n)) return 'Dairy & eggs';
+  if (FRUIT.test(n)) return 'Fruit';
+  if (VEGETABLES.test(n)) return 'Vegetables';
+  if (GRAINS.test(n)) return 'Grains, pasta & baking';
+  return 'Other';
+}
+
 const WEIGHT_IN_LB: Record<string, number> = { lb: 1, oz: 1 / 16, g: 1 / 453.6, kg: 2.2046 };
 
 /** Convert between weight units (g, kg, oz, lb); null if either isn't a weight. */

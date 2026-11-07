@@ -7,8 +7,18 @@ import { useAuth } from '@/providers/auth';
 
 import { Divider, Icon, T } from './ui';
 
-/** The me-n-u logo; tap it for a small menu with Sign out. */
-export function LogoMenu() {
+const LOGO = require('@/assets/images/logo-mark.png');
+
+/** The me-n-u logo on its own (top of each page). */
+export function Logo({ size = 40 }: { size?: number }) {
+  return <Image source={LOGO} style={{ width: size, height: size }} contentFit="contain" accessibilityLabel="me-n-u" />;
+}
+
+/**
+ * Bottom-left logo under the tabs: opens the Settings menu (account and
+ * Sign out). On phones `compact` keeps it small enough to sit in the tab bar.
+ */
+export function SettingsLogo({ compact = false }: { compact?: boolean }) {
   const { session, displayName, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -17,17 +27,28 @@ export function LogoMenu() {
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel="Account menu"
+        accessibilityLabel="Settings"
         hitSlop={6}
-        style={({ pressed }) => [styles.logoButton, pressed && { opacity: 0.7 }]}>
-        <Image source={require('@/assets/images/logo-mark.png')} style={styles.logo} contentFit="contain" />
+        style={({ pressed }) => [styles.button, compact && styles.buttonCompact, pressed && { opacity: 0.7 }]}>
+        <Logo size={compact ? 30 : 36} />
+        {!compact && (
+          <View style={{ flex: 1 }}>
+            <T variant="small" style={styles.settingsLabel}>
+              Settings
+            </T>
+            <T variant="small" numberOfLines={1}>
+              {displayName || session?.user.email}
+            </T>
+          </View>
+        )}
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         {/* Tap anywhere outside the menu to close it. */}
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close menu">
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close settings">
           <View style={styles.menu} onStartShouldSetResponder={() => true}>
             <View style={styles.account}>
+              <T variant="label">Settings</T>
               <T variant="subheading" numberOfLines={1}>
                 {displayName || 'Signed in'}
               </T>
@@ -56,13 +77,20 @@ export function LogoMenu() {
 }
 
 const styles = StyleSheet.create({
-  // Just the logo, no box behind it.
-  logoButton: { alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 40, height: 40 },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  buttonCompact: { paddingHorizontal: Spacing.md, paddingVertical: 0, justifyContent: 'center' },
+  settingsLabel: { color: Colors.text, fontWeight: '600' },
   backdrop: { flex: 1, backgroundColor: 'rgba(30,43,34,0.12)' },
+  // Opens from the bottom-left corner, above the logo.
   menu: {
     position: 'absolute',
-    top: 70,
+    bottom: 80,
     left: 16,
     width: 260,
     backgroundColor: Colors.surface,
