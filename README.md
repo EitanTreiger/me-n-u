@@ -3,7 +3,7 @@
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
 
 - **Groups.** Each home (or community) is a group. Whoever creates a group is its admin, and people join with a 6‑letter invite code. Admins can promote other members.
-- **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Claude converts the photo or video into an editable, structured recipe.
+- **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Gemini converts the photo or video (it watches the video itself, so captions aren't needed) into an editable, structured recipe.
 - **Pantry and "what's missing".** Each person keeps a pantry list. Every recipe shows what you have and what you still need to buy.
 - **Ratings and consensus ranking.** Everyone rates recipes 1–5 stars. The **Top rated** list uses a Bayesian average, so one 5‑star vote can't outrank twenty 4.6s.
 - **Cook for any number of people.** Set "Cooking for" on a recipe (say 10 people for a recipe that serves 2) and every ingredient scales ×5. Amounts are rounded to kitchen-friendly sizes: whole eggs, quarter cups, teaspoons instead of tiny tablespoons.
@@ -19,7 +19,7 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
 | --- | --- |
 | App | Expo SDK 58 + Expo Router (TypeScript), in [`mobile/`](mobile) |
 | Backend | Supabase (Postgres + RLS, Auth, Storage, Edge Functions), in [`supabase/`](supabase) |
-| AI conversion | Claude (`claude-opus-5-5`) via the `convert-recipe` Edge Function |
+| AI conversion | Google Gemini (Flash) via the `convert-recipe` Edge Function |
 
 ## Setup
 
@@ -33,12 +33,12 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
 
 ### 2. Recipe converter (photo / YouTube → text)
 
-You need an Anthropic API key from <https://console.anthropic.com>.
+You need a Gemini API key from <https://aistudio.google.com>.
 
 ```bash
 npx supabase login
 npx supabase link --project-ref <your-project-ref>
-npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+npx supabase secrets set GEMINI_API_KEY=your-gemini-key
 npx supabase functions deploy convert-recipe
 ```
 
