@@ -172,7 +172,9 @@ export function Chip({
   const content = (
     <>
       {icon && <Icon name={icon} size={13} color={toneStyle.color} />}
-      <Text style={[styles.chipText, { color: toneStyle.color }]}>{label}</Text>
+      <Text style={[styles.chipText, { color: toneStyle.color }]} numberOfLines={2}>
+        {label}
+      </Text>
     </>
   );
   const style = [styles.chip, { backgroundColor: toneStyle.backgroundColor, borderColor: toneStyle.borderColor }];
@@ -375,8 +377,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: Radius.pill,
     borderWidth: 1,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  // flexShrink lets long chip labels wrap inside narrow cards instead of overflowing.
+  chipText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
   stars: { flexDirection: 'row', gap: 2, alignItems: 'center' },
   stepper: {
     flexDirection: 'row',

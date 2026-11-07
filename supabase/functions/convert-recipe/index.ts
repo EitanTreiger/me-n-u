@@ -249,6 +249,144 @@ async function callGemini(
   throw new UserFacingError(lastProblem, 503);
 }
 
+// ---------------------------------------------------------------------------
+// Dish photo picker: gather candidate photos online, let Gemini look at them
+// and choose the one that actually shows the dish.
+// ---------------------------------------------------------------------------
+
+const UA = { 'User-Agent': 'me-n-u/1.0 (recipe sharing app prototype)', 'Api-User-Agent': 'me-n-u/1.0 (recipe sharing app prototype)' };
+
+async function mealDbCandidates(query: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`, {
+      signal: AbortSignal.timeout(6000),
+    });
+    const data = await res.json();
+    return (data.meals ?? []).slice(0, 4).map((m: { strMealThumb: string }) => `${m.strMealThumb}/preview`);
+  } catch {
+    return [];
+  }
+}
+
+async function wikipediaCandidates(query: string): Promise<string[]> {
+  const params = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    generator: 'search',
+    gsrsearch: `${query} dish`,
+    gsrlimit: '5',
+    prop: 'pageimages',
+    piprop: 'thumbnail',
+    pithumbsize: '330',
+  });
+  try {
+    const res = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, { headers: UA, signal: AbortSignal.timeout(6000) });
+    const data = await res.json();
+    return Object.values(data.query?.pages ?? {})
+      .sort((a, b) => (a as { index: number }).index - (b as { index: number }).index)
+      .map((p) => (p as { thumbnail?: { source: string } }).thumbnail?.source)
+      .filter((s): s is string => !!s && !/\.svg/i.test(s));
+  } catch {
+    return [];
+  }
+}
+
+/** Lead photo of the Wikipedia article named exactly after the dish. */
+async function wikipediaArticleImage(title: string): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}?redirect=true`,
+      { headers: UA, signal: AbortSignal.timeout(6000) },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const src: string | undefined = data?.thumbnail?.source;
+    return data?.type === 'standard' && src && !/\.svg/i.test(src) ? [src] : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Photos from Wikimedia Commons, Wikipedia's free media library. */
+async function commonsCandidates(query: string): Promise<string[]> {
+  const params = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    generator: 'search',
+    gsrnamespace: '6',
+    gsrsearch: `${query} filetype:bitmap`,
+    gsrlimit: '5',
+    prop: 'imageinfo',
+    iiprop: 'url',
+    iiurlwidth: '330',
+  });
+  try {
+    const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, { headers: UA, signal: AbortSignal.timeout(6000) });
+    const data = await res.json();
+    return Object.values(data.query?.pages ?? {})
+      .sort((a, b) => (a as { index: number }).index - (b as { index: number }).index)
+      .map((p) => (p as { imageinfo?: { thumburl?: string }[] }).imageinfo?.[0]?.thumburl)
+      .filter((s): s is string => !!s);
+  } catch {
+    return [];
+  }
+}
+
+async function loadImage(url: string): Promise<{ url: string; data: string; mime: string } | null> {
+  try {
+    const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(6000) });
+    const mime = res.headers.get('content-type') ?? '';
+    if (!res.ok || !mime.startsWith('image/') || mime.includes('svg')) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length > 1_500_000) return null;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { url, data: btoa(binary), mime: mime.split(';')[0] };
+  } catch {
+    return null;
+  }
+}
+
+async function pickDishImage(apiKey: string, title: string, description: string, current?: string): Promise<{ url: string | null; candidates: number; loaded: number }> {
+  const shortTitle = title.split(/\s+/).slice(-2).join(' ');
+  const lists = await Promise.all([
+    wikipediaArticleImage(title),
+    commonsCandidates(title),
+    mealDbCandidates(title),
+    wikipediaCandidates(title),
+    shortTitle !== title ? wikipediaArticleImage(shortTitle) : Promise.resolve([]),
+  ]);
+  // Take a few from each source so no single source crowds out the rest.
+  const [article, commons, mealdb, wiki, articleShort] = lists;
+  const urls = [
+    ...new Set([
+      ...(current ? [current] : []),
+      ...article,
+      ...articleShort,
+      ...commons.slice(0, 4),
+      ...mealdb.slice(0, 2),
+      ...wiki.slice(0, 2),
+    ]),
+  ].slice(0, 10);
+  const images = (await Promise.all(urls.map(loadImage))).filter((i): i is NonNullable<typeof i> => !!i);
+  if (!images.length) return null;
+
+  const parts: Part[] = [];
+  images.forEach((img, i) => {
+    parts.push({ text: `Image ${i}:` });
+    parts.push({ inline_data: { mime_type: img.mime, data: img.data } });
+  });
+  parts.push({
+    text: `Which image is the best appetising photo of the finished dish "${title}"${description ? ` (${description})` : ''}? It must clearly show this dish (not a raw ingredient, a different dish, a person, a map or a logo). Answer -1 if none fit.`,
+  });
+  const out = await callGemini(apiKey, parts, false, {
+    schema: { type: 'object', required: ['best'], properties: { best: { type: 'integer' } } },
+    system: 'You choose food photos for a recipe app. Be strict: only pick an image that clearly shows the named dish.',
+  });
+  const best = Number(out.best);
+  return { url: best >= 0 && best < images.length ? images[best].url : null, candidates: urls.length, loaded: images.length };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -265,11 +403,23 @@ Deno.serve(async (req) => {
     transcript?: string;
     text?: string;
     receiptBase64?: string;
+    pickImage?: string;
+    currentUrl?: string;
   };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  // Find a photo of a dish: { pickImage: title, description?, currentUrl? } -> { url }
+  if (body.pickImage) {
+    try {
+      return json(await pickDishImage(apiKey, body.pickImage, body.description ?? '', body.currentUrl));
+    } catch (e) {
+      console.error('image pick failed', e);
+      return json({ url: null, error: e instanceof Error ? e.message : 'failed' });
+    }
   }
 
   // Receipt or shopping list photo -> pantry items.

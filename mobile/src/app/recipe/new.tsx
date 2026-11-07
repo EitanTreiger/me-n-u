@@ -6,8 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 
 import { Button, Card, Chip, ErrorBanner, Field, Icon, IconButton, T, type IconName } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { convertPhoto, convertText, convertYoutube, createRecipe, uploadPhoto } from '@/lib/api';
-import { findRecipeImage } from '@/lib/images';
+import { attachRecipeImage, convertPhoto, convertText, convertYoutube, createRecipe, uploadPhoto } from '@/lib/api';
 import { formatIngredient, parseIngredientLine } from '@/lib/ingredients';
 import { youtubeId, youtubeThumb } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
@@ -145,13 +144,7 @@ export default function NewRecipe() {
     try {
       const photo_path = photo ? await uploadPhoto(active.id, photo.uri, photo.mimeType) : null;
       // No photo of our own (and no video thumbnail): find a picture online, but don't wait more than 5 s.
-      const image_url =
-        photo_path || mode === 'youtube'
-          ? null
-          : await Promise.race([
-              findRecipeImage(title.trim()),
-              new Promise<null>((done) => setTimeout(() => done(null), 5000)),
-            ]);
+      const needsImage = !photo_path && mode !== 'youtube';
       const source: RecipeSource = mode === 'photo' || mode === 'youtube' ? mode : 'manual';
       const id = await createRecipe({
         group_id: active.id,
@@ -163,12 +156,13 @@ export default function NewRecipe() {
         steps,
         dietary_tags: tags,
         photo_path,
-        image_url,
         video_url: mode === 'youtube' && videoUrl.trim() ? videoUrl.trim() : null,
         // Keep timestamps only if the steps weren't added to or removed while editing.
         step_timestamps: mode === 'youtube' && stepTimes && stepTimes.length === steps.length ? stepTimes : null,
         source,
       });
+      // No photo of our own: Gemini picks one online in the background.
+      if (needsImage) attachRecipeImage(id, title.trim(), description.trim());
       router.replace({ pathname: '/recipe/[id]', params: { id } });
     } catch (e) {
       setError(friendlyError(e));

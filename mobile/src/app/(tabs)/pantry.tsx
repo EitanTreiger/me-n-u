@@ -1,10 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
-import { Button, Card, Chip, EmptyState, ErrorBanner, Field, Icon, Loading, SectionHeader, T } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Button, Card, Chip, Divider, EmptyState, ErrorBanner, Field, IconButton, Loading, SectionHeader, Stepper, T } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
 import { formatIngredient, pantryHas } from '@/lib/ingredients';
@@ -145,25 +145,37 @@ export default function PantryTab() {
           />
         </Card>
       ) : (
-        <View style={styles.chips}>
-          {pantry.items.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => pantry.remove(item.id)}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${item.name}`}
-              style={({ pressed }) => [styles.item, pressed && { opacity: 0.6 }]}>
-              <T style={styles.itemText}>
-                {item.quantity > 0 ? formatIngredient({ name: item.name, quantity: item.quantity, unit: item.unit }) : item.name}
-              </T>
-              <Icon name="close" size={14} color={Colors.textSecondary} />
-            </Pressable>
+        <Card style={styles.list}>
+          {pantry.items.map((item, i) => (
+            <View key={item.id}>
+              {i > 0 && <Divider />}
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <T style={styles.itemText} numberOfLines={1}>
+                    {formatIngredient({ name: item.name, quantity: item.quantity || 1, unit: item.unit })}
+                  </T>
+                </View>
+                <Stepper
+                  value={Math.round(item.quantity || 1)}
+                  min={0}
+                  max={999}
+                  label={item.name}
+                  onChange={(n) => pantry.setQuantity(item.id, n)}
+                />
+                {!!item.unit && (
+                  <T variant="small" style={styles.unit}>
+                    {item.unit}
+                  </T>
+                )}
+                <IconButton name="trash-outline" size={18} color={Colors.textMuted} label={`Remove ${item.name}`} onPress={() => pantry.remove(item.id)} />
+              </View>
+            </View>
           ))}
-        </View>
+        </Card>
       )}
       {pantry.items.length > 0 && (
         <T variant="small" style={{ marginTop: Spacing.md }}>
-          Tap an item to remove it when you run out.
+          Use − and + to update amounts. Going below 1 removes the item.
         </T>
       )}
     </Screen>
@@ -175,14 +187,8 @@ const styles = StyleSheet.create({
   scanCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.md },
   scanButtons: { flexDirection: 'row', gap: Spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primarySoft,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-  },
-  itemText: { fontSize: 14, fontWeight: '500' },
+  list: { paddingVertical: Spacing.xs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
+  itemText: { fontSize: 15, fontWeight: '500' },
+  unit: { width: 34 },
 });
