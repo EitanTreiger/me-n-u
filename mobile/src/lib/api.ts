@@ -96,6 +96,10 @@ export function convertPhoto(base64: string, mediaType: string) {
   return invokeConvert({ imageBase64: base64, mediaType });
 }
 
+export function convertText(text: string) {
+  return invokeConvert({ text });
+}
+
 export async function convertYoutube(url: string) {
   // Send the description too when this device can read it: the server can
   // then convert from text in seconds instead of watching the video.

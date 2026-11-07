@@ -6,7 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 
 import { Button, Card, Chip, ErrorBanner, Field, Icon, IconButton, T, type IconName } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { convertPhoto, convertYoutube, createRecipe, uploadPhoto } from '@/lib/api';
+import { convertPhoto, convertText, convertYoutube, createRecipe, uploadPhoto } from '@/lib/api';
 import { findRecipeImage } from '@/lib/images';
 import { formatIngredient, parseIngredientLine } from '@/lib/ingredients';
 import { youtubeId, youtubeThumb } from '@/lib/ranking';
@@ -14,10 +14,16 @@ import { friendlyError } from '@/lib/supabase';
 import { DIETARY_TAGS, type ConvertedRecipe, type Ingredient, type RecipeSource } from '@/lib/types';
 import { useGroups } from '@/providers/groups';
 
-type Mode = 'manual' | 'photo' | 'youtube';
+type Mode = 'manual' | 'paste' | 'photo' | 'youtube';
 
 const MODES: { key: Mode; label: string; icon: IconName; hint: string }[] = [
-  { key: 'manual', label: 'Type it', icon: 'create-outline', hint: 'Write the recipe yourself.' },
+  { key: 'manual', label: 'Type', icon: 'create-outline', hint: 'Write the recipe yourself.' },
+  {
+    key: 'paste',
+    label: 'Paste',
+    icon: 'clipboard-outline',
+    hint: 'Paste a whole recipe from a website, email or document and we will sort it into ingredients and steps.',
+  },
   { key: 'photo', label: 'Photo', icon: 'camera-outline', hint: 'Snap a recipe card, cookbook page or handwritten note and we will turn it into text.' },
   { key: 'youtube', label: 'YouTube', icon: 'logo-youtube', hint: 'Paste a cooking video link and we will write out the recipe from it.' },
 ];
@@ -29,6 +35,7 @@ export default function NewRecipe() {
   const [mode, setMode] = useState<Mode>('manual');
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
+  const [pasted, setPasted] = useState('');
   const [converting, setConverting] = useState(false);
   const [converted, setConverted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -100,6 +107,18 @@ export default function NewRecipe() {
     }
   }
 
+  async function convertPasted() {
+    setError(null);
+    setConverting(true);
+    try {
+      fill(await convertText(pasted.trim()));
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setConverting(false);
+    }
+  }
+
   async function convertVideo() {
     setError(null);
     if (!youtubeId(videoUrl)) {
@@ -130,7 +149,7 @@ export default function NewRecipe() {
               findRecipeImage(title.trim()),
               new Promise<null>((done) => setTimeout(() => done(null), 5000)),
             ]);
-      const source: RecipeSource = mode === 'manual' ? 'manual' : mode;
+      const source: RecipeSource = mode === 'photo' || mode === 'youtube' ? mode : 'manual';
       const id = await createRecipe({
         group_id: active.id,
         title: title.trim(),
@@ -207,6 +226,29 @@ export default function NewRecipe() {
           </Card>
         )}
 
+        {mode === 'paste' && (
+          <Card style={styles.sourceCard}>
+            <Field
+              label="Recipe text"
+              value={pasted}
+              onChangeText={(v) => {
+                setPasted(v);
+                setConverted(false);
+              }}
+              placeholder={'Paste everything here: title, ingredients and instructions.\nExtra text from the website is fine.'}
+              multiline
+              style={{ minHeight: 220 }}
+            />
+            <Button
+              title="Format recipe"
+              icon="sparkles-outline"
+              onPress={convertPasted}
+              loading={converting}
+              disabled={pasted.trim().length < 20}
+            />
+          </Card>
+        )}
+
         {mode === 'youtube' && (
           <Card style={styles.sourceCard}>
             {thumb && (
@@ -234,7 +276,8 @@ export default function NewRecipe() {
           <View style={styles.converting}>
             <Icon name="sparkles" size={18} color={Colors.primaryStrong} />
             <T variant="small" style={{ flex: 1, color: Colors.text }}>
-              Reading the {mode === 'photo' ? 'photo' : 'video'} and writing out the recipe. This takes a few seconds…
+              Reading the {mode === 'photo' ? 'photo' : mode === 'paste' ? 'text' : 'video'} and writing out the recipe. This
+              takes a few seconds…
             </T>
           </View>
         )}
