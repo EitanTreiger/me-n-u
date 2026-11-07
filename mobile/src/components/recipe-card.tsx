@@ -75,6 +75,14 @@ export function RecipeCard({
               · {recipe.total_minutes} min
             </T>
           )}
+          {recipe.votes > 0 && (
+            <View style={styles.votes}>
+              <Icon name={recipe.myVote ? 'thumbs-up' : 'thumbs-up-outline'} size={12} color={Colors.primaryStrong} />
+              <T variant="small" style={{ color: Colors.primaryStrong, fontWeight: '600' }}>
+                {recipe.votes}
+              </T>
+            </View>
+          )}
         </View>
 
         {total > 0 && (
@@ -134,6 +142,7 @@ const styles = StyleSheet.create({
   },
   rankTop: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   rankText: { fontWeight: '700', color: Colors.textSecondary, lineHeight: 16 },
+  votes: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 });

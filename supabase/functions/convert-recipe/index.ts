@@ -39,7 +39,7 @@ const DIETARY_TAGS = [
 
 const recipeSchema = {
   type: 'object',
-  required: ['is_recipe', 'title', 'description', 'servings', 'total_minutes', 'ingredients', 'steps', 'dietary_tags'],
+  required: ['is_recipe', 'title', 'description', 'servings', 'total_minutes', 'ingredients', 'steps', 'step_times', 'dietary_tags'],
   properties: {
     is_recipe: {
       type: 'boolean',
@@ -65,15 +65,45 @@ const recipeSchema = {
       },
     },
     steps: { type: 'array', items: { type: 'string' }, description: 'Clear instructions in order, without numbers' },
+    step_times: {
+      type: 'array',
+      items: { type: 'integer' },
+      description:
+        'One entry per step: the second in the video where that step is shown or explained. -1 for every step when the source is not a video, or when unknown.',
+    },
     dietary_tags: { type: 'array', items: { type: 'string', enum: DIETARY_TAGS } },
+  },
+};
+
+const receiptSchema = {
+  type: 'object',
+  required: ['items'],
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'quantity', 'unit'],
+        properties: {
+          name: { type: 'string', description: "Plain food name a recipe would use, lowercase, e.g. 'eggs', 'cheddar cheese', 'chicken breast'" },
+          quantity: { type: 'number', description: 'How many / how much was bought; 0 if unclear' },
+          unit: { type: 'string', description: 'g, kg, ml, l, lb, oz, can, or empty string for countable items like eggs or apples' },
+        },
+      },
+    },
   },
 };
 
 const SYSTEM_PROMPT = `You turn cooking content into clean, structured recipes for staff and residents of group homes.
 Write in plain, friendly language that is easy to follow. Keep the author's ingredients and method; do not invent steps that are not supported by the source, but you may fill in obvious gaps (like "preheat the oven") when the source clearly implies them.
 For videos, use what is said, any text shown on screen, and what you can see being added. Estimate amounts you can clearly see but that are not stated, and use 0 when you cannot tell.
+Every cooking step should say the heat level or oven temperature (°F with °C) and roughly how long, when the source says or clearly shows it.
+For videos and transcripts, give each step the time (in seconds from the start) where it happens, using the [seconds] markers in the transcript.
 Only add a dietary tag when the ingredient list clearly supports it.
 If the input is a photo of a finished dish with no written recipe, set is_recipe to true only if you can confidently identify the dish, and give a simple, standard home version of it.`;
+
+const RECEIPT_PROMPT = `This is a photo of a grocery receipt or a shopping list. List the food and cooking items on it, with how many or how much of each.
+Turn store abbreviations into plain names ("GRN ONION" -> "green onions", "LG EGGS 12CT" -> 12 eggs). Skip non-food items, bags, taxes, totals and discounts.`;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -145,13 +175,18 @@ class UserFacingError extends Error {
 
 type Part = Record<string, unknown>;
 
-async function callGemini(apiKey: string, parts: Part[], isVideo: boolean): Promise<Record<string, unknown>> {
+async function callGemini(
+  apiKey: string,
+  parts: Part[],
+  isVideo: boolean,
+  { schema = recipeSchema as object, system = SYSTEM_PROMPT } = {},
+): Promise<Record<string, unknown>> {
   const body = {
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: 'user', parts }],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseJsonSchema: recipeSchema,
+      responseJsonSchema: schema,
       // Low thinking + low video resolution keeps a 6-minute video to ~25 s.
       thinkingConfig: { thinkingLevel: 'low' },
       ...(isVideo ? { mediaResolution: 'MEDIA_RESOLUTION_LOW' } : {}),
@@ -221,11 +256,39 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) return json({ error: 'GEMINI_API_KEY is not set on the server' }, 500);
 
-  let body: { imageBase64?: string; mediaType?: string; youtubeUrl?: string; title?: string; description?: string; text?: string };
+  let body: {
+    imageBase64?: string;
+    mediaType?: string;
+    youtubeUrl?: string;
+    title?: string;
+    description?: string;
+    transcript?: string;
+    text?: string;
+    receiptBase64?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  // Receipt or shopping list photo -> pantry items.
+  if (body.receiptBase64) {
+    try {
+      const out = await callGemini(
+        apiKey,
+        [
+          { inline_data: { mime_type: body.mediaType ?? 'image/jpeg', data: body.receiptBase64 } },
+          { text: 'List the food items on this receipt or shopping list.' },
+        ],
+        false,
+        { schema: receiptSchema, system: RECEIPT_PROMPT },
+      );
+      return json({ items: out.items ?? [] });
+    } catch (e) {
+      if (e instanceof UserFacingError) return json({ error: e.message }, e.status);
+      return json({ error: "Couldn't read that receipt. Try a clearer photo." }, 500);
+    }
   }
 
   const parts: Part[] = [];
@@ -259,16 +322,22 @@ Deno.serve(async (req) => {
     const text: VideoText | null = body.description
       ? { title: body.title ?? '', description: body.description }
       : await fetchVideoText(id);
-    if (text && descriptionHasRecipe(text.description)) {
+    // The video's own transcript (sent by the app, "[seconds] words" lines)
+    // gives the method and a timestamp for each step.
+    const transcript = (body.transcript ?? '').slice(0, 120_000);
+    if (transcript || (text && descriptionHasRecipe(text.description))) {
       try {
         const fromText = await callGemini(
           apiKey,
           [
             {
               text: [
-                'Extract the recipe from this YouTube video description.',
-                `<video_title>${text.title}</video_title>`,
-                `<video_description>${text.description}</video_description>`,
+                transcript
+                  ? "Extract the recipe from this YouTube video's transcript, using the description for exact amounts if it lists them. Give each step the [seconds] time where it happens in the transcript."
+                  : 'Extract the recipe from this YouTube video description. Use -1 for every step time.',
+                `<video_title>${text?.title ?? body.title ?? ''}</video_title>`,
+                `<video_description>${text?.description ?? ''}</video_description>`,
+                transcript ? `<transcript>${transcript}</transcript>` : '',
               ].join('\n'),
             },
           ],
@@ -278,7 +347,7 @@ Deno.serve(async (req) => {
         if (fromText.is_recipe && ingredients && ingredients.length >= 2) {
           delete fromText.is_recipe;
           fromText.dietary_tags = ((fromText.dietary_tags as string[]) ?? []).filter((t) => DIETARY_TAGS.includes(t));
-          return json({ recipe: fromText, from: 'description' });
+          return json({ recipe: fromText, from: transcript ? 'transcript' : 'description' });
         }
       } catch (e) {
         console.error('description pass failed, watching the video instead', e);
@@ -293,7 +362,7 @@ Deno.serve(async (req) => {
       // Supabase's time limit even when Gemini is slow.
       video_metadata: { fps: 0.25, end_offset: '600s' },
     });
-    parts.push({ text: 'Extract the recipe from this cooking video.' });
+    parts.push({ text: 'Extract the recipe from this cooking video. Give each step the time in seconds where it happens in the video.' });
   } else {
     return json({ error: 'Send text, imageBase64 or youtubeUrl' }, 400);
   }

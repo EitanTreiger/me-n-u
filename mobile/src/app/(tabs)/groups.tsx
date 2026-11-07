@@ -87,24 +87,29 @@ export default function GroupsTab() {
             </View>
             <Chip label={isAdmin ? 'Admin' : 'Member'} selected={isAdmin} />
           </View>
-          <Divider />
-          <View style={styles.inviteRow}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <T variant="label">Invite code</T>
-              <T style={styles.code} >{active.invite_code}</T>
-            </View>
-            <Button
-              title="Share"
-              icon="share-outline"
-              variant="secondary"
-              compact
-              onPress={() =>
-                Share.share({
-                  message: `Join "${active.name}" on me-n-u with invite code ${active.invite_code}`,
-                })
-              }
-            />
-          </View>
+          {/* Only admins can invite people. */}
+          {isAdmin && (
+            <>
+              <Divider />
+              <View style={styles.inviteRow}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T variant="label">Invite code</T>
+                  <T style={styles.code}>{active.invite_code}</T>
+                </View>
+                <Button
+                  title="Share"
+                  icon="share-outline"
+                  variant="secondary"
+                  compact
+                  onPress={() =>
+                    Share.share({
+                      message: `Join "${active.name}" on me-n-u with invite code ${active.invite_code}`,
+                    })
+                  }
+                />
+              </View>
+            </>
+          )}
         </Card>
       )}
 

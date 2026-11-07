@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useLayout } from '@/hooks/use-layout';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -14,14 +15,22 @@ function tabIcon(active: IconName, inactive: IconName) {
 }
 
 export default function TabsLayout() {
+  // Computers and big tablets get a sidebar; phones keep the bottom tab bar.
+  const { wide } = useLayout();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarPosition: wide ? 'left' : 'bottom',
+        tabBarVariant: wide ? 'material' : 'uikit',
+        tabBarLabelPosition: wide ? 'beside-icon' : 'below-icon',
         tabBarActiveTintColor: Colors.primaryStrong,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: { backgroundColor: Colors.surface, borderTopColor: Colors.border },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveBackgroundColor: wide ? Colors.primarySoft : undefined,
+        tabBarStyle: wide
+          ? { backgroundColor: Colors.surface, borderRightColor: Colors.border, paddingTop: 16 }
+          : { backgroundColor: Colors.surface, borderTopColor: Colors.border },
+        tabBarLabelStyle: { fontSize: wide ? 15 : 11, fontWeight: '600' },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Recipes', tabBarIcon: tabIcon('book', 'book-outline') }} />
       <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
