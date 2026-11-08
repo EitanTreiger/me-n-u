@@ -3,6 +3,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { RecipeGallery } from '@/components/recipe-gallery';
 import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, SectionHeader, Stars, Stepper, T } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
@@ -21,6 +22,7 @@ import { youtubeThumb } from '@/lib/ranking';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
 import { formatTimestamp, youtubeAt } from '@/lib/youtube';
+import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 import { usePantry } from '@/providers/pantry';
 
@@ -40,7 +42,8 @@ export default function RecipeDetail() {
   const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isAdmin, activeHome } = useGroups();
-  // Menu votes are per home; ratings are shared by the whole community.
+  const userId = useAuth().session?.user.id;
+  // Menu votes are per home; recipes and ratings are shared by every home.
   const homeId = activeHome?.id;
   const pantry = usePantry();
   const { wide, contentWidth } = useLayout();
@@ -90,8 +93,8 @@ export default function RecipeDetail() {
   const factor = servingFactor(base, cookingFor);
   const ingredients = scaleIngredients(recipe.ingredients, factor);
   const missing = ingredients.filter((i) => !pantryHas(pantry.names, i.name));
-  // Only admins can delete (the database enforces this too).
-  const canDelete = isAdmin;
+  // Recipes are shared by every home: only the person who added one can delete it (the database enforces this too).
+  const canDelete = recipe.author_id === userId;
   const times = recipe.video_url && recipe.step_timestamps?.length === recipe.steps.length ? recipe.step_timestamps : null;
 
   async function refreshRecipe() {
@@ -234,7 +237,7 @@ export default function RecipeDetail() {
           />
         ) : (
           <Button
-            title={recipe.myVote ? `Voted for the menu · ${recipe.votes}` : `Vote for the menu${recipe.votes ? ` · ${recipe.votes}` : ''}`}
+            title={recipe.myVote ? 'Voted for the menu' : 'Vote for the menu'}
             icon={recipe.myVote ? 'thumbs-up' : 'thumbs-up-outline'}
             variant={recipe.myVote ? 'primary' : 'secondary'}
             onPress={toggleVote}
@@ -415,7 +418,7 @@ export default function RecipeDetail() {
                   onPress={() =>
                     confirm(
                       `Delete "${recipe.title}"?`,
-                      'Are you sure? It will be removed for everyone in the community, including from weekly menus, ratings and votes. This cannot be undone.',
+                      'Are you sure? It will be removed for everyone in every home, including from weekly menus, ratings, votes and its gallery. This cannot be undone.',
                       async () => {
                       try {
                         await deleteRecipe(recipe.id);
@@ -451,6 +454,7 @@ export default function RecipeDetail() {
             {stepsSection}
           </>
         )}
+        <RecipeGallery recipeId={recipe.id} />
       </ScrollView>
     </>
   );

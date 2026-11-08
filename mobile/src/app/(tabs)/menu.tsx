@@ -174,7 +174,7 @@ function MenuPlanner() {
 
 export default function MenuTab() {
   return (
-    <GroupGate title="Weekly menu" needsHome>
+    <GroupGate title="Weekly menu">
       <MenuPlanner />
     </GroupGate>
   );

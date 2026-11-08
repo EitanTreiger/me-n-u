@@ -81,7 +81,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
       <Tabs.Screen name="groceries" options={{ title: 'Groceries', tabBarIcon: tabIcon('cart', 'cart-outline') }} />
       <Tabs.Screen name="pantry" options={{ title: 'Pantry', tabBarIcon: tabIcon('basket', 'basket-outline') }} />
-      <Tabs.Screen name="groups" options={{ title: 'Groups', tabBarIcon: tabIcon('people', 'people-outline') }} />
+      <Tabs.Screen name="groups" options={{ title: 'Homes', tabBarIcon: tabIcon('home', 'home-outline') }} />
     </Tabs>
   );
 }

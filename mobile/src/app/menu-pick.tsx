@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 
-import { HomeSwitcher } from '@/components/home-switcher';
 import { RecipeThumb } from '@/components/recipe-card';
 import { Button, Card, Chip, ErrorBanner, Icon, Loading, Stars, Stepper, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
@@ -28,7 +27,7 @@ export default function MenuPick() {
   const Colors = useColors();
   const styles = useStyles();
   const params = useLocalSearchParams<{ week?: string; day?: string; meal?: Meal; recipeId?: string; people?: string }>();
-  const { active, activeHome, isAdmin } = useGroups();
+  const { activeHome, isAdmin } = useGroups();
   const [week, setWeek] = useState(params.week ?? weekStart());
   const [day, setDay] = useState<number>(params.day ? Number(params.day) : (new Date().getDay() + 6) % 7);
   const [meal, setMeal] = useState<Meal>(params.meal ?? 'dinner');
@@ -57,13 +56,13 @@ export default function MenuPick() {
   }, [activeHome, params.people]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!activeHome) return;
     // Votes from the home whose menu this is.
-    listRecipes(active.id, activeHome?.id)
+    listRecipes(activeHome.id)
       // Recipes members voted for come first, then the best rated.
       .then((r) => setRecipes(r.sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats))))
       .catch((e) => setError(friendlyError(e)));
-  }, [active, activeHome]);
+  }, [activeHome]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -73,7 +72,7 @@ export default function MenuPick() {
   if (!isAdmin) {
     return (
       <View style={{ padding: Spacing.lg }}>
-        <ErrorBanner message="Only group admins can plan the menu." />
+        <ErrorBanner message="Only this home's admins can plan its menu." />
       </View>
     );
   }
@@ -97,10 +96,10 @@ export default function MenuPick() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* The meal goes on this home's menu; from a recipe, the admin can pick another home. */}
+        {/* The meal goes on the menu of the home being viewed (switch homes in Settings). */}
         <View style={styles.homeRow}>
           <T variant="label">Home</T>
-          {slotFixed ? <T variant="small">{activeHome?.name}</T> : <HomeSwitcher />}
+          <T variant="small">{activeHome?.name}</T>
         </View>
         {!slotFixed && (
           <>

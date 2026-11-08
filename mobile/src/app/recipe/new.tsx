@@ -12,7 +12,6 @@ import { formatIngredient, parseIngredientLine } from '@/lib/ingredients';
 import { youtubeId, youtubeThumb } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
 import { DIETARY_TAGS, type ConvertedRecipe, type Ingredient, type RecipeSource } from '@/lib/types';
-import { useGroups } from '@/providers/groups';
 
 type Mode = 'manual' | 'paste' | 'photo' | 'youtube';
 
@@ -33,7 +32,6 @@ type Photo = { uri: string; base64: string | null; mimeType: string };
 export default function NewRecipe() {
   const Colors = useColors();
   const styles = useStyles();
-  const { active } = useGroups();
   const [mode, setMode] = useState<Mode>('manual');
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
@@ -141,16 +139,14 @@ export default function NewRecipe() {
   }
 
   async function save() {
-    if (!active) return;
     setSaving(true);
     setError(null);
     try {
-      const photo_path = photo ? await uploadPhoto(active.id, photo.uri, photo.mimeType) : null;
+      const photo_path = photo ? await uploadPhoto(photo.uri, photo.mimeType) : null;
       // No photo of our own (and no video thumbnail): find a picture online, but don't wait more than 5 s.
       const needsImage = !photo_path && mode !== 'youtube';
       const source: RecipeSource = mode === 'photo' || mode === 'youtube' ? mode : 'manual';
       const id = await createRecipe({
-        group_id: active.id,
         title: title.trim(),
         description: description.trim(),
         servings: Number(servings) > 0 ? Math.round(Number(servings)) : null,
