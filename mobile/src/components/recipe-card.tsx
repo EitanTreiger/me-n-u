@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { missingIngredients } from '@/lib/ingredients';
 import { youtubeThumb } from '@/lib/ranking';
 import { photoUrl } from '@/lib/supabase';
@@ -10,6 +11,8 @@ import type { RecipeWithStats } from '@/lib/types';
 import { Card, Chip, Icon, T } from './ui';
 
 export function RecipeThumb({ recipe, size = 84 }: { recipe: Pick<RecipeWithStats, 'photo_path' | 'video_url' | 'image_url'>; size?: number }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const uri = photoUrl(recipe.photo_path) ?? recipe.image_url ?? youtubeThumb(recipe.video_url);
   return (
     <View style={[styles.thumb, { width: size, height: size }]}>
@@ -54,6 +57,8 @@ export function RecipeCard({
   /** Bigger photo and text, for computers. */
   large?: boolean;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const missing = missingIngredients(pantry, recipe.ingredients);
   const total = recipe.ingredients.length;
   const ready = total > 0 && missing.length === 0;
@@ -126,7 +131,7 @@ export function RecipeCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   card: { flexDirection: 'row', gap: Spacing.md, padding: Spacing.md },
   cardLarge: { gap: Spacing.xl, padding: Spacing.lg, borderRadius: Radius.lg },
   thumb: {
@@ -156,4 +161,4 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaLarge: { fontSize: 15 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-});
+}));

@@ -1,24 +1,55 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, View } from 'react-native';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useAppearance, useColors, type AppearancePreference } from '@/providers/appearance';
 import { useAuth } from '@/providers/auth';
 
 import { Divider, Icon, T, type IconName } from './ui';
 
 const LOGO = require('@/assets/images/logo-mark.png');
+const WORDMARK = require('@/assets/images/logo-wordmark.png');
 
 const SETTINGS_OPTIONS: { label: string; icon: IconName; value: string }[] = [
   { label: 'Change name', icon: 'person-outline', value: '' },
-  { label: 'Appearance', icon: 'contrast-outline', value: 'Light' },
   { label: 'Notifications', icon: 'notifications-outline', value: 'On' },
   { label: 'Help & feedback', icon: 'help-circle-outline', value: '' },
 ];
 
-/** The me-n-u logo on its own (top of each page). */
+const APPEARANCE_OPTIONS: { label: string; value: AppearancePreference }[] = [
+  { label: 'System', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+];
+
+/** The logo is one dark green, so in dark mode it's tinted light sage to stay readable. */
+function useLogoTint() {
+  const { scheme, colors } = useAppearance();
+  return scheme === 'dark' ? colors.primaryStrong : undefined;
+}
+
+/** The me-n-u logo on its own (the settings button). */
 export function Logo({ size = 40 }: { size?: number }) {
-  return <Image source={LOGO} style={{ width: size, height: size }} contentFit="contain" accessibilityLabel="me-n-u" />;
+  const tint = useLogoTint();
+  return (
+    <Image source={LOGO} style={{ width: size, height: size }} tintColor={tint} contentFit="contain" accessibilityLabel="me-n-u" />
+  );
+}
+
+/** Logo with the "me-n-u" name beside it, as on the sign-in screen (top of the sidebar). */
+export function Wordmark({ height = 40 }: { height?: number }) {
+  const tint = useLogoTint();
+  // Source is 773x240.
+  return (
+    <Image
+      source={WORDMARK}
+      style={{ width: (height * 773) / 240, height }}
+      tintColor={tint}
+      contentFit="contain"
+      accessibilityLabel="me-n-u"
+    />
+  );
 }
 
 /**
@@ -26,7 +57,10 @@ export function Logo({ size = 40 }: { size?: number }) {
  * Sign out). On phones `compact` keeps it small enough to sit in the tab bar.
  */
 export function SettingsLogo({ compact = false }: { compact?: boolean }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const { session, displayName, signOut } = useAuth();
+  const { preference, setPreference } = useAppearance();
   const [open, setOpen] = useState(false);
 
   return (
@@ -61,6 +95,29 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
               )}
             </View>
             <Divider />
+            <View style={styles.appearance}>
+              <View style={styles.appearanceLabel}>
+                <Icon name="contrast-outline" size={18} color={Colors.textSecondary} />
+                <T>Appearance</T>
+              </View>
+              <View style={styles.segments} accessibilityRole="radiogroup">
+                {APPEARANCE_OPTIONS.map((o) => {
+                  const selected = preference === o.value;
+                  return (
+                    <Pressable
+                      key={o.value}
+                      onPress={() => setPreference(o.value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      style={({ pressed }) => [styles.segment, selected && styles.segmentSelected, pressed && { opacity: 0.7 }]}>
+                      <T variant="small" style={[styles.segmentText, selected && { color: Colors.onPrimary }]}>
+                        {o.label}
+                      </T>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
             {/* Placeholders for now: they show the option but don't do anything yet. */}
             {SETTINGS_OPTIONS.map((o) => (
               <Pressable
@@ -93,7 +150,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -103,7 +160,7 @@ const styles = StyleSheet.create({
   },
   buttonCompact: { paddingHorizontal: Spacing.md, paddingVertical: 0, justifyContent: 'center' },
   name: { flex: 1, color: Colors.text, fontWeight: '600' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(30,43,34,0.12)' },
+  backdrop: { flex: 1, backgroundColor: Colors.backdrop },
   // Opens from the bottom-left corner, above the logo.
   menu: {
     position: 'absolute',
@@ -129,4 +186,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-});
+  appearance: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
+  appearanceLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  // System / Light / Dark segmented control.
+  segments: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    padding: 2,
+    gap: 2,
+  },
+  segment: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: Radius.sm - 2 },
+  segmentSelected: { backgroundColor: Colors.primary },
+  segmentText: { color: Colors.textSecondary, fontWeight: '600' },
+}));

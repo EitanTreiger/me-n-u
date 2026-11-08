@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 
 import { RecipeThumb } from '@/components/recipe-card';
 import { Button, Card, Chip, ErrorBanner, Icon, Loading, Stars, Stepper, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
-import { Colors, InputText, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { InputText, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { addMenuItem, listRecipes } from '@/lib/api';
 import { formatFactor, servingFactor } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
@@ -23,6 +24,8 @@ const PEOPLE_KEY = 'menuPeople';
  *  - from a recipe (recipeId given) -> pick the week, day and meal
  */
 export default function MenuPick() {
+  const Colors = useColors();
+  const styles = useStyles();
   const params = useLocalSearchParams<{ week?: string; day?: string; meal?: Meal; recipeId?: string; people?: string }>();
   const { active, isAdmin } = useGroups();
   const [week, setWeek] = useState(params.week ?? weekStart());
@@ -201,7 +204,7 @@ export default function MenuPick() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   content: { padding: Spacing.lg, paddingBottom: 120, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   peopleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
@@ -230,4 +233,4 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
-});
+}));

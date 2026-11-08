@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, EmptyState, ErrorBanner, Field, IconButton, Loading, SectionHeader, Stepper, T } from '@/components/ui';
-import { Colors, InputText, Spacing } from '@/constants/theme';
+import { InputText, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { INGREDIENT_CATALOG } from '@/lib/ingredient-catalog';
 import { readReceipt } from '@/lib/api';
 import { formatIngredient, formatQuantity, pantryHas, parseIngredientLine } from '@/lib/ingredients';
@@ -25,6 +26,8 @@ const STAPLES = [
 ];
 
 export default function PantryTab() {
+  const Colors = useColors();
+  const styles = useStyles();
   const pantry = usePantry();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -330,7 +333,7 @@ export default function PantryTab() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   addRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
   scanCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.md },
   scanButtons: { flexDirection: 'row', gap: Spacing.sm },
@@ -355,4 +358,4 @@ const styles = StyleSheet.create({
   list: { paddingVertical: Spacing.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
   itemText: { fontSize: 15, fontWeight: '500' },
-});
+}));

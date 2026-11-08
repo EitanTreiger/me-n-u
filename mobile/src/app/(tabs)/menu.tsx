@@ -1,12 +1,13 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { useLayout } from '@/hooks/use-layout';
 import { listMenu, removeMenuItem } from '@/lib/api';
 import { friendlyError } from '@/lib/supabase';
@@ -17,6 +18,8 @@ import { useGroups } from '@/providers/groups';
 const MEAL_LABEL: Record<Meal, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 
 function MenuPlanner() {
+  const Colors = useColors();
+  const styles = useStyles();
   const { active, isAdmin } = useGroups();
   const [week, setWeek] = useState(weekStart());
   const [items, setItems] = useState<MenuItem[] | null>(null);
@@ -170,7 +173,7 @@ export default function MenuTab() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   days: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.md },
   day: { paddingVertical: Spacing.md },
   today: { borderColor: Colors.primary, borderWidth: 2 },
@@ -189,4 +192,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.primarySoft,
   },
-});
+}));

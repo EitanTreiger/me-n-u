@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CommunitySetup } from '@/components/group-gate';
 import { SettingsLogo } from '@/components/logo-menu';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/providers/appearance';
 
 /**
  * Shown to signed-in people who aren't in a community yet (new accounts, or
@@ -11,6 +11,7 @@ import { Colors } from '@/constants/theme';
  * they create or join one. Settings (Sign out) sits bottom-left as elsewhere.
  */
 export default function Welcome() {
+  const Colors = useColors();
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <CommunitySetup title="Welcome to me-n-u" />

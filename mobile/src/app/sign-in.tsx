@@ -1,14 +1,17 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorBanner, Field, T } from '@/components/ui';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { signInWithGoogle } from '@/lib/oauth';
 import { friendlyError, isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export default function SignIn() {
+  const Colors = useColors();
+  const styles = useStyles();
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -138,7 +141,7 @@ export default function SignIn() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },
   container: {
@@ -160,4 +163,4 @@ const styles = StyleSheet.create({
   notice: { backgroundColor: Colors.primarySoft, borderRadius: Radius.md, padding: Spacing.md },
   switch: { alignItems: 'center', padding: Spacing.sm },
   link: { color: Colors.primaryStrong, fontWeight: '600' },
-});
+}));

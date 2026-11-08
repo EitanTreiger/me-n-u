@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { friendlyError } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
@@ -22,6 +23,8 @@ export function GroupGate({ title, children }: { title: string; children: ReactN
 }
 
 export function CommunitySetup({ title }: { title: string }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const { displayName } = useAuth();
   const { createGroup, joinGroup } = useGroups();
   const [name, setName] = useState('');
@@ -106,7 +109,7 @@ export function CommunitySetup({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   intro: { gap: Spacing.xs, marginBottom: Spacing.lg },
   options: { gap: Spacing.md },
   option: { gap: Spacing.md },
@@ -120,4 +123,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   codeInput: { fontSize: 20, letterSpacing: 4, fontWeight: '600' },
-});
+}));

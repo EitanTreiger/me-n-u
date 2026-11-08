@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, SectionHeader, Stars, Stepper, T } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { useLayout } from '@/hooks/use-layout';
 import { deleteRecipe, getRecipe, rateRecipe, setMenuVote } from '@/lib/api';
 import {
@@ -35,6 +36,8 @@ function confirm(title: string, message: string, onYes: () => void) {
 }
 
 export default function RecipeDetail() {
+  const Colors = useColors();
+  const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isAdmin } = useGroups();
   const pantry = usePantry();
@@ -444,6 +447,8 @@ export default function RecipeDetail() {
 }
 
 function Fact({ icon, label }: { icon: 'time-outline' | 'people-outline' | 'flame-outline'; label: string }) {
+  const Colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.fact}>
       <Icon name={icon} size={16} color={Colors.primaryStrong} />
@@ -454,7 +459,7 @@ function Fact({ icon, label }: { icon: 'time-outline' | 'people-outline' | 'flam
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   content: {
     padding: Spacing.lg,
     paddingBottom: Spacing.xxl * 2,
@@ -535,4 +540,4 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   timestampText: { color: Colors.primaryStrong, fontWeight: '600' },
-});
+}));
