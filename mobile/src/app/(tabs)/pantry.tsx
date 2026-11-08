@@ -333,7 +333,7 @@ function PantryList() {
 
 export default function PantryTab() {
   return (
-    <GroupGate title="Pantry">
+    <GroupGate title="Pantry" adminOnly>
       <PantryList />
     </GroupGate>
   );

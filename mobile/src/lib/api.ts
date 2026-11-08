@@ -3,7 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { AVATAR_BUCKET, PHOTO_BUCKET, supabase } from './supabase';
 import { fromISODate, weekStart } from './week';
 import { fetchVideoText } from './youtube';
-import type { ConvertedRecipe, Ingredient, Meal, MenuItem, Recipe, RecipeSource, RecipeStats, RecipeWithStats } from './types';
+import type { ConvertedRecipe, HomeRole, Ingredient, Meal, MenuItem, Recipe, RecipeSource, RecipeStats, RecipeWithStats } from './types';
 
 const RECIPE_SELECT = '*, author:profiles!recipes_author_id_fkey(display_name)';
 
@@ -291,7 +291,7 @@ export async function removeGroceryExtra(id: string) {
 
 // --- Members ----------------------------------------------------------------
 
-export type Member = { user_id: string; role: 'admin' | 'member'; display_name: string };
+export type Member = { user_id: string; role: HomeRole; display_name: string };
 
 /** People in a home and their role there. */
 export async function listMembers(homeId: string): Promise<Member[]> {
@@ -301,9 +301,15 @@ export async function listMembers(homeId: string): Promise<Member[]> {
     .eq('home_id', homeId)
     .order('joined_at');
   if (error) throw error;
-  return (data as unknown as { user_id: string; role: 'admin' | 'member'; profile: { display_name: string } | null }[]).map(
+  return (data as unknown as { user_id: string; role: HomeRole; profile: { display_name: string } | null }[]).map(
     (m) => ({ user_id: m.user_id, role: m.role, display_name: m.profile?.display_name || 'Member' }),
   );
+}
+
+/** The home's creator makes someone an acting admin (or back to a member). */
+export async function setActingAdmin(homeId: string, userId: string, acting: boolean) {
+  const { error } = await supabase.rpc('set_acting_admin', { hid: homeId, member_id: userId, acting });
+  if (error) throw error;
 }
 
 /** Every home's name (not its menu or pantry), for picking one to join. */
@@ -334,6 +340,21 @@ export async function listGallery(recipeId: string): Promise<GalleryPhoto[]> {
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data as GalleryPhoto[];
+}
+
+/** A gallery photo with the recipe it was posted on, for the Gallery tab. */
+export type GalleryFeedPhoto = GalleryPhoto & { recipe: { id: string; title: string } | null };
+
+/** Everyone's food photos from every recipe, newest first, a page at a time. */
+export async function listAllGallery(page: number, pageSize = 30): Promise<GalleryFeedPhoto[]> {
+  const from = page * pageSize;
+  const { data, error } = await supabase
+    .from('recipe_gallery')
+    .select('*, author:profiles(display_name), recipe:recipes(id, title)')
+    .order('created_at', { ascending: false })
+    .range(from, from + pageSize - 1);
+  if (error) throw error;
+  return data as GalleryFeedPhoto[];
 }
 
 export async function addGalleryPhoto(recipeId: string, uri: string, mimeType = 'image/jpeg') {

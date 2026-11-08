@@ -61,7 +61,7 @@ export function HomeSwitcher() {
                     <T style={{ flex: 1, fontWeight: selected ? '600' : '400' }} numberOfLines={1}>
                       {h.name}
                     </T>
-                    {h.role === 'admin' && <T variant="small">Admin</T>}
+                    {h.role !== 'member' && <T variant="small">{h.role === 'admin' ? 'Admin' : 'Acting admin'}</T>}
                   </Pressable>
                 </View>
               );

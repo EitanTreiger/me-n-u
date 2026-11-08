@@ -91,7 +91,7 @@ export function RecipeGallery({ recipeId }: { recipeId: string }) {
     <View style={styles.section}>
       <SectionHeader title={`Gallery${photos?.length ? ` · ${photos.length}` : ''}`} />
       <Card style={{ gap: Spacing.md }}>
-        <T variant="small">Made this? Add a photo of how yours turned out. Every home can see the gallery.</T>
+        <T variant="small">Made this? Add a photo of how yours turned out. It also shows on the Gallery tab for every home.</T>
         <View style={styles.actions}>
           {/* Phones can take a photo straight away; computers pick a file. */}
           {Platform.OS !== 'web' && (

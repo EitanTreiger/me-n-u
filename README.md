@@ -2,9 +2,10 @@
 
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
 
-- **Homes.** Each home has its own weekly menu, grocery list, pantry and admin. When you first sign in you choose: join a home (pick it from the list of homes, as a member) or create one (you name it and become its admin). Only a home's creator is its admin. You can belong to several homes and switch between them in Settings (bottom left). Menu votes count for one home and only its admin sees them. Recipes, star ratings and photos (including each recipe's gallery) are shared by every home.
+- **Homes.** Each home has its own weekly menu, grocery list, pantry and admins. When you first sign in you choose: join a home (pick it from the list of homes, as a member) or create one (you name it and become its admin). A home's creator can make members acting admins (same access, but they can't make others admins) and undo it. Admins plan the menu, run the grocery list and pantry, see that home's menu votes and can delete recipes; members see the menu, vote and rate. You can belong to several homes and switch between them in Settings (bottom left). Recipes, star ratings and photos are shared by every home.
 - **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Gemini converts the photo or video (it watches the video itself, so captions aren't needed) into an editable, structured recipe.
 - **Pantry and "what's missing".** Each person keeps a pantry list. Every recipe shows what you have and what you still need to buy.
+- **Gallery.** Anyone can add a photo of a meal they made at the bottom of its recipe. Every photo also appears on the Gallery tab (shared by every home); tap one to open its recipe.
 - **Ratings and consensus ranking.** Everyone rates recipes 1–5 stars. The **Top rated** list uses a Bayesian average, so one 5‑star vote can't outrank twenty 4.6s.
 - **Cook for any number of people.** Set "Cooking for" on a recipe (say 10 people for a recipe that serves 2) and every ingredient scales ×5. Amounts are rounded to kitchen-friendly sizes: whole eggs, quarter cups, teaspoons instead of tiny tablespoons.
 - **Weekly menu (admins).** Admins plan breakfast, lunch and dinner for each day of any week, and set how many people each meal is for.
@@ -36,6 +37,7 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
      - [`20261107100000_homes_first.sql`](supabase/migrations/20261107100000_homes_first.sql) makes homes the top level: admins per home, recipes and ratings shared by every home, and the recipe gallery.
      - [`20261107110000_join_from_list_creator_admin.sql`](supabase/migrations/20261107110000_join_from_list_creator_admin.sql) lets people pick a home to join from a list and makes each home's creator its only admin.
      - [`20261107120000_creator_can_see_home.sql`](supabase/migrations/20261107120000_creator_can_see_home.sql) fixes the row-level security error when creating a home.
+     - [`20261107130000_acting_admins.sql`](supabase/migrations/20261107130000_acting_admins.sql) adds acting admins, keeps groceries and pantries to admins, and lets only admins delete recipes.
 3. For quick testing, go to **Authentication → Providers → Email** and turn off **Confirm email** so new accounts can sign in right away.
 
 ### 2. Recipe converter (photo / YouTube → text)

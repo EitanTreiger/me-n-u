@@ -7,7 +7,7 @@ import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, ErrorBanner, Field, Icon, SectionHeader, T } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
-import { listMembers, type Member } from '@/lib/api';
+import { listMembers, setActingAdmin, type Member } from '@/lib/api';
 import { friendlyError } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
@@ -19,7 +19,7 @@ export default function HomesTab() {
   const styles = useStyles();
   const { session, displayName, signOut } = useAuth();
   const groups = useGroups();
-  const { homes, activeHome, isAdmin } = groups;
+  const { homes, activeHome, isAdmin, isOwner } = groups;
   const [panel, setPanel] = useState<Panel>(homes.length ? 'none' : 'join');
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
   const [homeName, setHomeName] = useState('');
@@ -43,6 +43,21 @@ export default function HomesTab() {
       loadMembers();
     }, [loadMembers]),
   );
+
+  // The creator makes someone an acting admin, or back to a member.
+  async function toggleActing(m: Member) {
+    if (!activeHome) return;
+    setError(null);
+    const acting = m.role === 'member';
+    // Update the list straight away, then save.
+    setMembers((prev) => prev.map((x) => (x.user_id === m.user_id ? { ...x, role: acting ? 'acting_admin' : 'member' } : x)));
+    try {
+      await setActingAdmin(activeHome.id, m.user_id, acting);
+    } catch (e) {
+      setError(friendlyError(e));
+      loadMembers();
+    }
+  }
 
   async function run(fn: () => Promise<unknown>, done?: string) {
     setBusy(true);
@@ -69,7 +84,7 @@ export default function HomesTab() {
           <View style={{ gap: Spacing.sm }}>
             {homes.map((h) => {
               const viewing = h.id === activeHome?.id;
-              const admin = h.role === 'admin';
+              const roleText = h.role === 'admin' ? 'You created it (admin)' : h.role === 'acting_admin' ? 'You are an acting admin' : 'You are a member';
               return (
                 <Card key={h.id} style={[styles.homeCard, viewing && styles.homeCardActive]}>
                   {/* Tap a home to see its menu, groceries and pantry (also in Settings, bottom left). */}
@@ -83,7 +98,7 @@ export default function HomesTab() {
                       <T variant="subheading" numberOfLines={1}>
                         {h.name}
                       </T>
-                      <T variant="small">{admin ? 'You are an admin' : 'You are a member'}</T>
+                      <T variant="small">{roleText}</T>
                     </View>
                     {viewing ? <Chip label="Viewing" selected /> : <T variant="small">View</T>}
                   </Pressable>
@@ -116,17 +131,32 @@ export default function HomesTab() {
                     {m.display_name}
                     {m.user_id === session?.user.id ? ' (you)' : ''}
                   </T>
-                  {/* Only the person who created the home is its admin. */}
-                  {m.role === 'admin' && <Chip label="Admin" selected />}
+                  {m.role === 'admin' ? (
+                    <Chip label="Admin" selected />
+                  ) : isOwner ? (
+                    // Only the creator can make someone an acting admin, or undo it.
+                    <Chip
+                      label={m.role === 'acting_admin' ? 'Acting admin' : 'Make acting admin'}
+                      icon={m.role === 'acting_admin' ? 'close' : 'add'}
+                      selected={m.role === 'acting_admin'}
+                      onPress={() => toggleActing(m)}
+                    />
+                  ) : (
+                    m.role === 'acting_admin' && <Chip label="Acting admin" />
+                  )}
                 </View>
               </View>
             ))}
           </Card>
-          {isAdmin && (
+          {isOwner ? (
             <T variant="small" style={{ marginTop: Spacing.sm }}>
-              {`You created ${activeHome.name}, so you're its admin: you plan its menu and grocery list and see its menu votes. It gives you nothing in other homes.`}
+              {`You created ${activeHome.name}, so you're its admin. Make someone an acting admin to give them the same access (menu, groceries, pantry, menu votes, deleting recipes); they can't make others admins, and you can undo it any time.`}
             </T>
-          )}
+          ) : isAdmin ? (
+            <T variant="small" style={{ marginTop: Spacing.sm }}>
+              {`You're an acting admin of ${activeHome.name}: you plan its menu and grocery list, see its pantry and menu votes. Only its creator can change who's an admin.`}
+            </T>
+          ) : null}
         </>
       )}
 

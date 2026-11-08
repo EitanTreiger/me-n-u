@@ -21,7 +21,7 @@ const NOTIFY_KEY = 'notificationsOn';
 const HELP = [
   'Homes: each home has its own menu, grocery list and pantry. Switch homes above.',
   'Join another home by picking it from the list on the Homes tab.',
-  "Only the person who creates a home is its admin: they plan its menu and see its menu votes.",
+  "A home's creator is its admin and can make others acting admins. Admins plan the menu, run the grocery list and pantry, see menu votes and can delete recipes.",
   'Recipes, ratings and gallery photos are shared by every home.',
 ];
 
@@ -269,9 +269,9 @@ export function SettingsMenu({ open, onClose }: { open: boolean; onClose: () => 
                         <T style={{ flex: 1, fontWeight: selected ? '600' : '400' }} numberOfLines={1}>
                           {h.name}
                         </T>
-                        {h.role === 'admin' && (
+                        {h.role !== 'member' && (
                           <T variant="small" style={{ color: Colors.textMuted }}>
-                            Admin
+                            {h.role === 'admin' ? 'Admin' : 'Acting admin'}
                           </T>
                         )}
                       </Pressable>

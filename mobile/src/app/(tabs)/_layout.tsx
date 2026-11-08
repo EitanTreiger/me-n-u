@@ -8,6 +8,7 @@ import { Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
 import { Avatar, SettingsLogo, SettingsMenu, Wordmark } from '@/components/logo-menu';
 import { useLayout } from '@/hooks/use-layout';
+import { useGroups } from '@/providers/groups';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -37,6 +38,8 @@ export default function TabsLayout() {
   const styles = useStyles();
   // Computers and big tablets get a sidebar; phones keep the bottom tab bar.
   const { wide } = useLayout();
+  // Groceries and the pantry are for the home's admins only.
+  const { isAdmin } = useGroups();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Phones: the Profile tab is a real tab (so it lines up with the others),
@@ -85,7 +88,8 @@ export default function TabsLayout() {
         tabBarStyle: wide
           ? { backgroundColor: Colors.surface, borderRightWidth: 0, paddingTop: 16 }
           : { backgroundColor: Colors.surface, borderTopWidth: 0 },
-        tabBarLabelStyle: { fontSize: wide ? 15 : 11, fontWeight: '600' },
+        // Phones can have seven tabs (admins), so labels are a touch smaller to fit.
+        tabBarLabelStyle: { fontSize: wide ? 15 : 10, fontWeight: '600' },
       }}>
       <Tabs.Screen
         name="profile"
@@ -99,9 +103,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="index" options={{ title: 'Recipes', tabBarIcon: tabIcon('book', 'book-outline') }} />
+      <Tabs.Screen name="gallery" options={{ title: 'Gallery', tabBarIcon: tabIcon('images', 'images-outline') }} />
       <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
-      <Tabs.Screen name="groceries" options={{ title: 'Groceries', tabBarIcon: tabIcon('cart', 'cart-outline') }} />
-      <Tabs.Screen name="pantry" options={{ title: 'Pantry', tabBarIcon: tabIcon('basket', 'basket-outline') }} />
+      <Tabs.Screen
+        name="groceries"
+        options={{ title: 'Groceries', href: isAdmin ? undefined : null, tabBarIcon: tabIcon('cart', 'cart-outline') }}
+      />
+      <Tabs.Screen
+        name="pantry"
+        options={{ title: 'Pantry', href: isAdmin ? undefined : null, tabBarIcon: tabIcon('basket', 'basket-outline') }}
+      />
       <Tabs.Screen name="groups" options={{ title: 'Homes', tabBarIcon: tabIcon('home', 'home-outline') }} />
     </Tabs>
     <SettingsMenu open={settingsOpen} onClose={() => setSettingsOpen(false)} />

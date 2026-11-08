@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { supabase } from '@/lib/supabase';
-import type { Home, Role } from '@/lib/types';
+import { isAdminRole, type Home, type HomeRole } from '@/lib/types';
 
 import { useAuth } from './auth';
 
@@ -13,8 +13,12 @@ type GroupsState = {
   homes: Home[];
   /** The home being viewed: its menu, groceries and pantry are shown. */
   activeHome: Home | null;
-  /** Admin of the home being viewed (admin rights never carry over to other homes). */
+  /** Admin (creator or acting admin) of the home being viewed; it never carries over to other homes. */
   isAdmin: boolean;
+  /** Created the home being viewed: the only one who can make others acting admins. */
+  isOwner: boolean;
+  /** Admin of at least one home (recipes are shared, so admins of any home can delete them). */
+  isAnyAdmin: boolean;
   loading: boolean;
   setActiveHome: (homeId: string) => void;
   refresh: () => Promise<void>;
@@ -35,7 +39,7 @@ async function fetchHomes(userId: string | undefined): Promise<{ rows: Home[]; s
     .eq('user_id', userId)
     .order('joined_at', { ascending: true });
   if (error || !data) return null;
-  const rows = (data as unknown as { role: Role; homes: Omit<Home, 'role'> | null }[])
+  const rows = (data as unknown as { role: HomeRole; homes: Omit<Home, 'role'> | null }[])
     .filter((r) => r.homes)
     .map((r) => ({ ...r.homes!, role: r.role }));
   const stored = await AsyncStorage.getItem(ACTIVE_HOME_KEY).catch(() => null);
@@ -90,7 +94,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     return {
       homes,
       activeHome,
-      isAdmin: activeHome?.role === 'admin',
+      isAdmin: isAdminRole(activeHome?.role),
+      isOwner: activeHome?.role === 'admin',
+      isAnyAdmin: homes.some((h) => isAdminRole(h.role)),
       loading: loading || loadedFor !== userId,
       setActiveHome,
       refresh,
