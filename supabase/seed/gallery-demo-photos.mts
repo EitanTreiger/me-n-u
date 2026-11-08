@@ -91,12 +91,12 @@ writeFileSync(join(here, 'gallery-demo-photos.json'), JSON.stringify(picks, null
 console.log(`${picks.length} photos picked`);
 
 if (process.argv.includes('--insert') && picks.length) {
-  // Added as the app owner's photos, captioned with the source.
+  // Added as the app owner's photos, credited to the first home (posters show only as their home).
   const owner = (await sql(`select id from profiles order by created_at limit 1`))[0].id;
   await sql(
-    `insert into recipe_gallery (recipe_id, user_id, photo_path, caption) values ${picks
-      .map((p) => `(${lit(p.recipe_id)}, ${lit(owner)}, ${lit(p.url)}, 'Photo from Wikimedia Commons')`)
-      .join(', ')};`,
+    `insert into recipe_gallery (recipe_id, user_id, photo_path, home_id, home_name) select v.r::uuid, v.u::uuid, v.p, h.id, h.name from (values ${picks
+      .map((p) => `(${lit(p.recipe_id)}, ${lit(owner)}, ${lit(p.url)})`)
+      .join(', ')}) v(r, u, p), (select id, name from homes order by created_at limit 1) h;`,
   );
   console.log('inserted into recipe_gallery');
 }
