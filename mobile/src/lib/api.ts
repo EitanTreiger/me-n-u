@@ -336,7 +336,7 @@ export type GalleryPhoto = {
 /** Who a gallery photo is credited to, without naming the person. */
 export function galleryCredit(p: GalleryPhoto): string {
   if (p.home_name) return `From ${p.home_name}`;
-  return p.caption || 'From a me-n-u home';
+  return 'From a me-n-u home';
 }
 
 export async function listGallery(recipeId: string): Promise<GalleryPhoto[]> {
