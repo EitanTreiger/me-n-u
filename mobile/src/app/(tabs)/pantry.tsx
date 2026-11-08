@@ -20,11 +20,6 @@ function parseAmount(text: string): number {
   return parseIngredientLine(`${text.trim()} x`)?.quantity ?? (Number(text) || 0);
 }
 
-const STAPLES = [
-  'salt', 'pepper', 'olive oil', 'vegetable oil', 'butter', 'eggs', 'milk', 'flour', 'sugar', 'rice',
-  'pasta', 'garlic', 'onion', 'canned tomatoes', 'chicken stock', 'soy sauce', 'bread', 'cheese',
-];
-
 export default function PantryTab() {
   const Colors = useColors();
   const styles = useStyles();
@@ -60,18 +55,14 @@ export default function PantryTab() {
     }
   }
 
-  // While typing, search every known ingredient; otherwise show common staples.
+  // While typing, search every known ingredient.
   // Items already covered by the pantry ("onions" covers "onion") are hidden.
   const query = text.split(',').pop()!.trim().toLowerCase();
-  const suggestions = (
-    query
-      ? INGREDIENT_CATALOG.filter((i) => i.includes(query)).sort(
-          (a, b) => Number(!a.startsWith(query)) - Number(!b.startsWith(query)) || a.length - b.length,
-        )
-      : STAPLES
-  )
-    .filter((s) => !pantryHas(pantry.names, s))
-    .slice(0, 30);
+  const suggestions = query
+    ? INGREDIENT_CATALOG.filter((i) => i.includes(query) && !pantryHas(pantry.names, i))
+        .sort((a, b) => Number(!a.startsWith(query)) - Number(!b.startsWith(query)) || a.length - b.length)
+        .slice(0, 30)
+    : [];
 
   async function add(names: string[]) {
     setBusy(true);
@@ -240,7 +231,7 @@ export default function PantryTab() {
 
       {suggestions.length > 0 && (
         <>
-          <SectionHeader title={query ? `Matches for “${query}”` : 'Quick add'} />
+          <SectionHeader title={`Matches for “${query}”`} />
           <View style={styles.chips}>
             {suggestions.map((s) => (
               <Chip
