@@ -5,9 +5,16 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/providers/auth';
 
-import { Divider, Icon, T } from './ui';
+import { Divider, Icon, T, type IconName } from './ui';
 
 const LOGO = require('@/assets/images/logo-mark.png');
+
+const SETTINGS_OPTIONS: { label: string; icon: IconName; value: string }[] = [
+  { label: 'Change name', icon: 'person-outline', value: '' },
+  { label: 'Appearance', icon: 'contrast-outline', value: 'Light' },
+  { label: 'Notifications', icon: 'notifications-outline', value: 'On' },
+  { label: 'Help & feedback', icon: 'help-circle-outline', value: '' },
+];
 
 /** The me-n-u logo on its own (top of each page). */
 export function Logo({ size = 40 }: { size?: number }) {
@@ -32,14 +39,9 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
         style={({ pressed }) => [styles.button, compact && styles.buttonCompact, pressed && { opacity: 0.7 }]}>
         <Logo size={compact ? 30 : 36} />
         {!compact && (
-          <View style={{ flex: 1 }}>
-            <T variant="small" style={styles.settingsLabel}>
-              Settings
-            </T>
-            <T variant="small" numberOfLines={1}>
-              {displayName || session?.user.email}
-            </T>
-          </View>
+          <T variant="small" numberOfLines={1} style={styles.name}>
+            {displayName || session?.user.email}
+          </T>
         )}
       </Pressable>
 
@@ -58,6 +60,21 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                 </T>
               )}
             </View>
+            <Divider />
+            {/* Placeholders for now: they show the option but don't do anything yet. */}
+            {SETTINGS_OPTIONS.map((o) => (
+              <Pressable
+                key={o.label}
+                accessibilityRole="button"
+                accessibilityHint="Coming soon"
+                style={({ pressed }) => [styles.item, pressed && { backgroundColor: Colors.primarySoft }]}>
+                <Icon name={o.icon} size={18} color={Colors.textSecondary} />
+                <T style={{ flex: 1 }}>{o.label}</T>
+                <T variant="small" style={{ color: Colors.textMuted }}>
+                  {o.value}
+                </T>
+              </Pressable>
+            ))}
             <Divider />
             <Pressable
               onPress={() => {
@@ -85,7 +102,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   buttonCompact: { paddingHorizontal: Spacing.md, paddingVertical: 0, justifyContent: 'center' },
-  settingsLabel: { color: Colors.text, fontWeight: '600' },
+  name: { flex: 1, color: Colors.text, fontWeight: '600' },
   backdrop: { flex: 1, backgroundColor: 'rgba(30,43,34,0.12)' },
   // Opens from the bottom-left corner, above the logo.
   menu: {
