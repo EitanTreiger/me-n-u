@@ -4,15 +4,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-// The publishable (anon) key is designed to ship inside the app: row level
-// security decides what each signed-in user can read and write.
-// Override either value with mobile/.env.local if you point at another project.
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pmldwxwvowvkjxumgmfy.supabase.co';
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_eNcVJbRIWELa48nNjdH_0Q_ElOQ-9aW';
+// Set in mobile/.env.local for local runs and in Vercel's Environment
+// Variables for the website, so they aren't stored in the repo. The
+// publishable (anon) key still ends up in the built app (every Supabase web
+// app needs it in the browser); row level security decides what each
+// signed-in user can read and write.
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
-export const supabase = createClient(url, anonKey, {
+// Placeholders keep the app from crashing when the values are missing; the
+// sign-in screen then says Supabase isn't configured.
+export const supabase = createClient(url || 'https://not-configured.supabase.co', anonKey || 'not-configured', {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

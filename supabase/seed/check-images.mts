@@ -1,9 +1,9 @@
 // Re-check every recipe's online photo with the convert-recipe function's
 // Gemini image picker. The current photo is one of the candidates, so it is
 // only replaced when Gemini finds a better match.
-//   SUPABASE_ACCESS_TOKEN=... node supabase/seed/check-images.mts
+//   SUPABASE_ACCESS_TOKEN=... SUPABASE_PUBLISHABLE_KEY=... node supabase/seed/check-images.mts
 const PROJECT = 'pmldwxwvowvkjxumgmfy';
-const KEY = 'sb_publishable_eNcVJbRIWELa48nNjdH_0Q_ElOQ-9aW';
+const KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
 
 async function sql(query: string) {
   const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT}/database/query`, {
