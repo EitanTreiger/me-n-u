@@ -9,7 +9,7 @@ const RECIPE_SELECT = '*, author:profiles!recipes_author_id_fkey(display_name)';
 
 type Vote = { recipe_id: string; user_id: string };
 
-/** Menu votes count for the current week only (from Monday, local time). */
+/** Menu votes count for the current week only (from Monday, local time), and for one home. */
 function voteWeekStart(): string {
   return fromISODate(weekStart()).toISOString();
 }
@@ -27,27 +27,34 @@ function withStats(recipes: Recipe[], stats: RecipeStats[], votes: Vote[], userI
   });
 }
 
-export async function listRecipes(groupId: string): Promise<RecipeWithStats[]> {
+/** The community's recipes, with community-wide ratings and `homeId`'s menu votes. */
+export async function listRecipes(groupId: string, homeId: string | undefined): Promise<RecipeWithStats[]> {
   const { data: userData } = await supabase.auth.getUser();
   const [recipes, stats, votes] = await Promise.all([
     supabase.from('recipes').select(RECIPE_SELECT).eq('group_id', groupId).order('created_at', { ascending: false }),
     supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('group_id', groupId),
-    supabase.from('menu_votes').select('recipe_id, user_id, recipes!inner(group_id)').eq('recipes.group_id', groupId)
-      .gte('created_at', voteWeekStart()),
+    homeId
+      ? supabase.from('menu_votes').select('recipe_id, user_id').eq('home_id', homeId).gte('created_at', voteWeekStart())
+      : Promise.resolve({ data: [] as Vote[] }),
   ]);
   if (recipes.error) throw recipes.error;
   if (stats.error) throw stats.error;
   return withStats(recipes.data as Recipe[], stats.data as RecipeStats[], (votes.data ?? []) as Vote[], userData.user?.id);
 }
 
-export async function getRecipe(id: string): Promise<{ recipe: RecipeWithStats; myScore: number | null; timesOnMenu: number }> {
+export async function getRecipe(
+  id: string,
+  homeId: string | undefined,
+): Promise<{ recipe: RecipeWithStats; myScore: number | null; timesOnMenu: number }> {
   const { data: userData } = await supabase.auth.getUser();
   const [recipe, stats, mine, menuCount, votes] = await Promise.all([
     supabase.from('recipes').select(RECIPE_SELECT).eq('id', id).single(),
     supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('recipe_id', id).maybeSingle(),
     supabase.from('recipe_ratings').select('score').eq('recipe_id', id).eq('user_id', userData.user?.id ?? '').maybeSingle(),
     supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('recipe_id', id),
-    supabase.from('menu_votes').select('recipe_id, user_id').eq('recipe_id', id).gte('created_at', voteWeekStart()),
+    homeId
+      ? supabase.from('menu_votes').select('recipe_id, user_id').eq('recipe_id', id).eq('home_id', homeId).gte('created_at', voteWeekStart())
+      : Promise.resolve({ data: [] as Vote[] }),
   ]);
   if (recipe.error) throw recipe.error;
   const [withS] = withStats(
@@ -59,13 +66,16 @@ export async function getRecipe(id: string): Promise<{ recipe: RecipeWithStats; 
   return { recipe: withS, myScore: mine.data?.score ?? null, timesOnMenu: menuCount.count ?? 0 };
 }
 
-/** Vote (or un-vote) for a recipe to go on the weekly menu. */
-export async function setMenuVote(recipeId: string, vote: boolean) {
+/** Vote (or un-vote) for a recipe to go on a home's weekly menu. */
+export async function setMenuVote(recipeId: string, homeId: string, vote: boolean) {
   const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user!.id;
   const q = vote
     ? // Re-voting in a new week refreshes the date so it counts for this week.
-      supabase.from('menu_votes').upsert({ recipe_id: recipeId, user_id: userData.user!.id, created_at: new Date().toISOString() })
-    : supabase.from('menu_votes').delete().eq('recipe_id', recipeId).eq('user_id', userData.user!.id);
+      supabase
+        .from('menu_votes')
+        .upsert({ recipe_id: recipeId, user_id: userId, home_id: homeId, created_at: new Date().toISOString() })
+    : supabase.from('menu_votes').delete().eq('recipe_id', recipeId).eq('user_id', userId).eq('home_id', homeId);
   const { error } = await q;
   if (error) throw error;
 }

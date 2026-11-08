@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
+import { HomeSwitcher } from '@/components/home-switcher';
 import { RecipeCard } from '@/components/recipe-card';
 import { Screen } from '@/components/screen';
 import { Button, Chip, EmptyState, ErrorBanner, Icon, Loading, T } from '@/components/ui';
@@ -35,7 +36,7 @@ const SORTS: {
 function RecipesList() {
   const Colors = useColors();
   const styles = useStyles();
-  const { active, isAdmin } = useGroups();
+  const { active, activeHome, isAdmin } = useGroups();
   const { names: pantry } = usePantry();
   const [recipes, setRecipes] = useState<RecipeWithStats[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,15 +48,17 @@ function RecipesList() {
   const userId = useAuth().session?.user.id;
 
   const groupId = active!.id;
+  // Ratings are community-wide; menu votes are counted for this home.
+  const homeId = activeHome?.id;
 
   const load = useCallback(async () => {
     try {
-      setRecipes(await listRecipes(groupId));
+      setRecipes(await listRecipes(groupId, homeId));
       setError(null);
     } catch (e) {
       setError(friendlyError(e));
     }
-  }, [groupId]);
+  }, [groupId, homeId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -131,11 +134,17 @@ function RecipesList() {
       </View>
 
       <View style={styles.sortRow}>
-        {/* Most Votes (this week's member votes) is for admins planning the menu. */}
-        {SORTS.filter((s) => s.key !== 'votes' || isAdmin).map((s) => (
+        {/* Most Votes: this week's menu votes at one home (admins can switch homes). */}
+        {SORTS.filter((s) => s.key !== 'votes' || activeHome).map((s) => (
           <Chip key={s.key} label={s.label} icon={s.icon} selected={sort === s.key} onPress={() => setSort(s.key)} />
         ))}
       </View>
+      {sort === 'votes' && activeHome && (
+        <View style={styles.votesFor}>
+          <T variant="small">{isAdmin ? 'Menu votes this week at' : 'Menu votes this week at your home'}</T>
+          <HomeSwitcher />
+        </View>
+      )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagRow}>
         {DIETARY_TAGS.map((t) => (
@@ -198,6 +207,7 @@ export default function RecipesTab() {
 }
 
 const useStyles = makeStyles((Colors) => ({
+  votesFor: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
   groupPill: {
     flexDirection: 'row',
     alignItems: 'center',

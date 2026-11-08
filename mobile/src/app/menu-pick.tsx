@@ -58,11 +58,12 @@ export default function MenuPick() {
 
   useEffect(() => {
     if (!active) return;
-    listRecipes(active.id)
+    // Votes from the home whose menu this is.
+    listRecipes(active.id, activeHome?.id)
       // Recipes members voted for come first, then the best rated.
       .then((r) => setRecipes(r.sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats))))
       .catch((e) => setError(friendlyError(e)));
-  }, [active]);
+  }, [active, activeHome]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

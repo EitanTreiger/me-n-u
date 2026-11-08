@@ -28,8 +28,8 @@ export function GroupGate({ title, children, needsHome }: { title: string; child
         <Card>
           <EmptyState
             icon="home-outline"
-            title="No homes yet"
-            body={isAdmin ? 'Add a home on the Groups page to plan its menu.' : 'An admin needs to add a home first.'}
+            title={isAdmin ? 'No homes yet' : 'No home yet'}
+            body={isAdmin ? 'Add a home on the Groups page to plan its menu.' : "You're not in a home yet. Ask an admin for your home's join link or code."}
             action={isAdmin ? <Button title="Go to Groups" onPress={() => router.navigate('/groups')} /> : undefined}
           />
         </Card>

@@ -22,7 +22,7 @@ type GroupsState = {
   /** The community being viewed (recipes are shared across it). */
   active: Membership | null;
   isAdmin: boolean;
-  /** Homes in the active community. */
+  /** Homes in the active community this user can see: all of them for admins, else their own. */
   homes: Home[];
   /** The home being viewed: its menu, groceries and pantry are shown. */
   activeHome: Home | null;
@@ -195,8 +195,16 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<GroupsState>(() => {
     const active = memberships.find((m) => m.id === activeId) ?? null;
     // Only the active community's homes (ignores ones left over while switching).
-    const activeHomes = homes.filter((h) => h.group_id === active?.id);
-    const activeHome = activeHomes.find((h) => h.id === activeHomeId) ?? null;
+    // Admins see every home; everyone else only the homes they belong to.
+    const activeHomes = homes.filter(
+      (h) => h.group_id === active?.id && (active.role === 'admin' || (!!userId && h.members.includes(userId))),
+    );
+    // The chosen home if this user can see it, else their own, else the first.
+    const activeHome =
+      activeHomes.find((h) => h.id === activeHomeId) ??
+      activeHomes.find((h) => !!userId && h.members.includes(userId)) ??
+      activeHomes[0] ??
+      null;
     return {
       memberships,
       active,

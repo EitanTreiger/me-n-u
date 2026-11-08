@@ -2,7 +2,7 @@
 
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
 
-- **Communities and homes.** A community shares one recipe book. Admins add homes to it, and each home has its own weekly menu, grocery list and pantry. Every home has its own 6‑letter code and a join link (`/join/<code>`); joining a home also joins its community. Anyone can switch between the community's homes. Whoever creates a community is its admin and can promote other members.
+- **Communities and homes.** A community shares one recipe book. Admins add homes to it, and each home has its own weekly menu, grocery list and pantry. Every home has its own 6‑letter code and a join link (`/join/<code>`); joining a home also joins its community. Admins can switch between every home; members only see their own home's menu, groceries, pantry and menu votes. Star ratings are shared across the whole community. Whoever creates a community is its admin and can promote other members.
 - **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Gemini converts the photo or video (it watches the video itself, so captions aren't needed) into an editable, structured recipe.
 - **Pantry and "what's missing".** Each person keeps a pantry list. Every recipe shows what you have and what you still need to buy.
 - **Ratings and consensus ranking.** Everyone rates recipes 1–5 stars. The **Top rated** list uses a Bayesian average, so one 5‑star vote can't outrank twenty 4.6s.
@@ -29,7 +29,7 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
 2. In **SQL Editor**, paste and run each file in [`supabase/migrations/`](supabase/migrations) in order, oldest first:
    - [`20261107000000_init.sql`](supabase/migrations/20261107000000_init.sql) creates the tables, row‑level security, the `recipe-photos` storage bucket and realtime.
    - [`20261107020000_menu_servings.sql`](supabase/migrations/20261107020000_menu_servings.sql) lets each planned meal store how many people it's for.
-   - …and the rest in date order. [`20261107080000_homes.sql`](supabase/migrations/20261107080000_homes.sql) adds homes inside communities (per-home menus, groceries, pantry and invite codes).
+   - …and the rest in date order. [`20261107080000_homes.sql`](supabase/migrations/20261107080000_homes.sql) adds homes inside communities (per-home menus, groceries, pantry and invite codes). Then [`20261107090000_home_access_and_votes.sql`](supabase/migrations/20261107090000_home_access_and_votes.sql) limits members to their own home and makes menu votes per home.
 3. For quick testing, go to **Authentication → Providers → Email** and turn off **Confirm email** so new accounts can sign in right away.
 
 ### 2. Recipe converter (photo / YouTube → text)
