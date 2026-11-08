@@ -14,6 +14,13 @@ A mobile app for Thresholds group homes to share recipes, plan weekly menus and 
 
 Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradients.
 
+## 🎥 Demo Video
+
+Watch our demo to see how meNu connects two group homes
+through recipe sharing!
+
+[Watch the meNu Demo](./demo/meNu-demo.mp4)
+
 ## Stack
 
 | Part | Tech |
