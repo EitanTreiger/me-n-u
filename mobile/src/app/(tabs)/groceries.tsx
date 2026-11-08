@@ -1,12 +1,13 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { Pressable, Share, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
 import { Screen } from '@/components/screen';
 import { Button, Card, Divider, EmptyState, ErrorBanner, Field, Icon, IconButton, Loading, SectionHeader, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import {
   addGroceryExtra,
   listGroceryState,
@@ -35,6 +36,8 @@ function lineText(line: { name: string; quantity: number; unit: string }) {
 }
 
 function GroceryList() {
+  const Colors = useColors();
+  const styles = useStyles();
   const params = useLocalSearchParams<{ week?: string }>();
   const { active, isAdmin } = useGroups();
   const pantry = usePantry();
@@ -256,6 +259,8 @@ function Line({
   onToggle: () => void;
   onRemove?: () => void;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.line}>
       <Pressable
@@ -287,7 +292,7 @@ export default function GroceriesTab() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   progress: { gap: Spacing.sm, marginBottom: Spacing.xs },
   progressTrack: { height: 8, borderRadius: 4, backgroundColor: Colors.border, overflow: 'hidden' },
   progressFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },
@@ -307,4 +312,4 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   checkedText: { textDecorationLine: 'line-through', color: Colors.textMuted },
   addRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start', marginTop: Spacing.md },
-});
+}));

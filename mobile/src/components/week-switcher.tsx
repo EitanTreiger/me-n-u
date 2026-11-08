@@ -1,11 +1,13 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles } from '@/providers/appearance';
 import { addWeeks, weekLabel, weekStart } from '@/lib/week';
 
 import { IconButton, T } from './ui';
 
 export function WeekSwitcher({ week, onChange }: { week: string; onChange: (week: string) => void }) {
+  const styles = useStyles();
   const current = weekStart();
   return (
     <View style={styles.bar}>
@@ -25,7 +27,7 @@ export function WeekSwitcher({ week, onChange }: { week: string; onChange: (week
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -39,4 +41,4 @@ const styles = StyleSheet.create({
   },
   center: { flex: 1, alignItems: 'center', gap: 2 },
   todayLink: { color: Colors.primaryStrong, fontWeight: '600' },
-});
+}));

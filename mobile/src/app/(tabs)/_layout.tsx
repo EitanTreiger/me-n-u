@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BottomTabBar, Tabs } from 'expo-router/tabs';
 import type { ComponentProps } from 'react';
-import { StyleSheet, View, type ColorValue } from 'react-native';
+import { View, type ColorValue } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { SettingsLogo } from '@/components/logo-menu';
+import { Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
+import { SettingsLogo, Wordmark } from '@/components/logo-menu';
 import { useLayout } from '@/hooks/use-layout';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -16,15 +17,21 @@ function tabIcon(active: IconName, inactive: IconName) {
 }
 
 export default function TabsLayout() {
+  const Colors = useColors();
+  const styles = useStyles();
   // Computers and big tablets get a sidebar; phones keep the bottom tab bar.
   const { wide } = useLayout();
   return (
     <Tabs
       // The usual tab bar plus the settings logo in the bottom-left corner:
       // under the sidebar on computers, at the left end of the tab bar on phones.
+      // On computers the logo and name sit at the top of the sidebar.
       tabBar={(props) =>
         wide ? (
           <View style={styles.sidebar}>
+            <View style={styles.sidebarBrand}>
+              <Wordmark height={36} />
+            </View>
             <View style={{ flex: 1 }}>
               <BottomTabBar {...props} />
             </View>
@@ -64,8 +71,9 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   sidebar: { height: '100%', backgroundColor: Colors.surface, borderRightWidth: 1, borderRightColor: Colors.border },
+  sidebarBrand: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
   sidebarFooter: { borderTopWidth: 1, borderTopColor: Colors.border },
   bottomBar: {
     flexDirection: 'row',
@@ -75,4 +83,4 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     paddingTop: 6,
   },
-});
+}));

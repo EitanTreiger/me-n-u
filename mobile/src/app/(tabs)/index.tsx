@@ -1,12 +1,13 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
 import { RecipeCard } from '@/components/recipe-card';
 import { Screen } from '@/components/screen';
 import { Button, Chip, EmptyState, ErrorBanner, Icon, Loading, T } from '@/components/ui';
-import { Colors, InputText, Radius, Spacing } from '@/constants/theme';
+import { InputText, Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { listRecipes } from '@/lib/api';
 import { missingIngredients } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
@@ -32,6 +33,8 @@ const SORTS: {
 ];
 
 function RecipesList() {
+  const Colors = useColors();
+  const styles = useStyles();
   const { active, isAdmin } = useGroups();
   const { names: pantry } = usePantry();
   const [recipes, setRecipes] = useState<RecipeWithStats[] | null>(null);
@@ -194,7 +197,7 @@ export default function RecipesTab() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   groupPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -220,4 +223,4 @@ const styles = StyleSheet.create({
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.md },
   tagRow: { gap: Spacing.sm, paddingVertical: Spacing.md },
   list: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.md, marginTop: Spacing.xs },
-});
+}));

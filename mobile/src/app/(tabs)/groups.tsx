@@ -1,10 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { Pressable, Share, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, ErrorBanner, Field, Icon, SectionHeader, T } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { listMembers, setMemberRole, type Member } from '@/lib/api';
 import { friendlyError } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth';
@@ -13,6 +14,8 @@ import { useGroups } from '@/providers/groups';
 type Panel = 'none' | 'create' | 'join';
 
 export default function GroupsTab() {
+  const Colors = useColors();
+  const styles = useStyles();
   const { session, displayName, signOut } = useAuth();
   const groups = useGroups();
   const { active, isAdmin } = groups;
@@ -226,7 +229,7 @@ export default function GroupsTab() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   activeCard: { gap: Spacing.md },
   activeHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   groupIcon: {
@@ -252,4 +255,4 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: Spacing.sm },
   panel: { gap: Spacing.md, marginTop: Spacing.md },
   codeInput: { fontSize: 20, letterSpacing: 4, fontWeight: '600' },
-});
+}));

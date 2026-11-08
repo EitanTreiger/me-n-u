@@ -1,29 +1,41 @@
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import { Loading } from '@/components/ui';
-import { Colors } from '@/constants/theme';
+import { AppearanceProvider, useAppearance, useColors } from '@/providers/appearance';
 import { AuthProvider, useAuth } from '@/providers/auth';
 import { GroupsProvider, useGroups } from '@/providers/groups';
 import { PantryProvider } from '@/providers/pantry';
 
 SplashScreen.preventAutoHideAsync();
 
-const theme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: Colors.primaryStrong,
-    background: Colors.background,
-    card: Colors.surface,
-    text: Colors.text,
-    border: Colors.border,
-  },
-};
+/** Navigation theme and status bar follow the Light/Dark setting. */
+function Themed({ children }: { children: ReactNode }) {
+  const { scheme, colors: Colors } = useAppearance();
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const theme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: Colors.primaryStrong,
+      background: Colors.background,
+      card: Colors.surface,
+      text: Colors.text,
+      border: Colors.border,
+    },
+  };
+  return (
+    <ThemeProvider value={theme}>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      {children}
+    </ThemeProvider>
+  );
+}
 
 function RootNavigator() {
+  const Colors = useColors();
   const { session, loading } = useAuth();
   const groups = useGroups();
   // Signed in but not in any community yet: the only screen is create-or-join.
@@ -64,15 +76,16 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider value={theme}>
-      <StatusBar style="dark" />
-      <AuthProvider>
-        <GroupsProvider>
-          <PantryProvider>
-            <RootNavigator />
-          </PantryProvider>
-        </GroupsProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AppearanceProvider>
+      <Themed>
+        <AuthProvider>
+          <GroupsProvider>
+            <PantryProvider>
+              <RootNavigator />
+            </PantryProvider>
+          </GroupsProvider>
+        </AuthProvider>
+      </Themed>
+    </AppearanceProvider>
   );
 }

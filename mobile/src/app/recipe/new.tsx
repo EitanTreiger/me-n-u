@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button, Card, Chip, ErrorBanner, Field, Icon, IconButton, T, type IconName } from '@/components/ui';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { attachRecipeImage, convertPhoto, convertText, convertYoutube, createRecipe, uploadPhoto } from '@/lib/api';
 import { formatIngredient, parseIngredientLine } from '@/lib/ingredients';
 import { youtubeId, youtubeThumb } from '@/lib/ranking';
@@ -30,6 +31,8 @@ const MODES: { key: Mode; label: string; icon: IconName; hint: string }[] = [
 type Photo = { uri: string; base64: string | null; mimeType: string };
 
 export default function NewRecipe() {
+  const Colors = useColors();
+  const styles = useStyles();
   const { active } = useGroups();
   const [mode, setMode] = useState<Mode>('manual');
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -376,7 +379,7 @@ export default function NewRecipe() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   content: {
     padding: Spacing.lg,
     paddingBottom: Spacing.xxl * 2,
@@ -430,4 +433,4 @@ const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   smallPhoto: { width: 56, height: 56, borderRadius: Radius.sm },
-});
+}));

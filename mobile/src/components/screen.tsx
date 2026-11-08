@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { RefreshControl, ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
-import { Colors, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 import { useLayout } from '@/hooks/use-layout';
 
-import { Logo } from './logo-menu';
 import { T } from './ui';
 
 /** Scrollable page with a large title, centred on wide screens. */
@@ -30,10 +30,11 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const { contentWidth } = useLayout();
   const header = title ? (
     <View style={styles.header}>
-      <Logo />
       <View style={{ flex: 1, gap: 2 }}>
         <T variant="title">{title}</T>
         {typeof subtitle === 'string' ? <T variant="small">{subtitle}</T> : subtitle}
@@ -66,7 +67,7 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   safe: { flex: 1, backgroundColor: Colors.background },
   content: {
     padding: Spacing.lg,
@@ -81,4 +82,4 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     marginTop: Spacing.sm,
   },
-});
+}));

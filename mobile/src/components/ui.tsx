@@ -3,7 +3,6 @@ import type { ComponentProps, ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -13,13 +12,17 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Colors, InputText, Radius, Spacing, Type } from '@/constants/theme';
+import { InputText, Radius, Spacing, typeStyles, type TypeVariant } from '@/constants/theme';
+import { makeStyles, useColors } from '@/providers/appearance';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export function Icon({ name, size = 20, color = Colors.text }: { name: IconName; size?: number; color?: string }) {
-  return <Ionicons name={name} size={size} color={color} />;
+export function Icon({ name, size = 20, color }: { name: IconName; size?: number; color?: string }) {
+  const Colors = useColors();
+  return <Ionicons name={name} size={size} color={color ?? Colors.text} />;
 }
+
+const useType = makeStyles(typeStyles);
 
 export function T({
   variant = 'body',
@@ -27,13 +30,14 @@ export function T({
   children,
   numberOfLines,
 }: {
-  variant?: keyof typeof Type;
+  variant?: TypeVariant;
   style?: StyleProp<TextStyle>;
   children: ReactNode;
   numberOfLines?: number;
 }) {
+  const type = useType();
   return (
-    <Text style={[Type[variant], style]} numberOfLines={numberOfLines}>
+    <Text style={[type[variant], style]} numberOfLines={numberOfLines}>
       {children}
     </Text>
   );
@@ -60,6 +64,8 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const palette = {
     primary: { bg: Colors.primary, fg: Colors.onPrimary, border: Colors.primary },
     secondary: { bg: Colors.surface, fg: Colors.text, border: Colors.borderStrong },
@@ -97,7 +103,7 @@ export function IconButton({
   name,
   onPress,
   label,
-  color = Colors.text,
+  color,
   size = 22,
 }: {
   name: IconName;
@@ -106,6 +112,7 @@ export function IconButton({
   color?: string;
   size?: number;
 }) {
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -119,6 +126,7 @@ export function IconButton({
 }
 
 export function Card({ children, style, onPress }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void }) {
+  const styles = useStyles();
   if (onPress) {
     return (
       <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.cardPressed, style]}>
@@ -135,6 +143,8 @@ export function Field({
   style,
   ...props
 }: TextInputProps & { label?: string; hint?: string; style?: StyleProp<TextStyle> }) {
+  const Colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.field}>
       {label && <T variant="label">{label}</T>}
@@ -161,6 +171,8 @@ export function Chip({
   tone?: 'neutral' | 'warning' | 'success';
   icon?: IconName;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const toneStyle =
     tone === 'warning'
       ? { backgroundColor: Colors.warningSoft, borderColor: Colors.warningSoft, color: Colors.warning }
@@ -199,6 +211,8 @@ export function Stars({
   size?: number;
   onChange?: (score: number) => void;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.stars} accessibilityLabel={`${value.toFixed(1)} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((n) => {
@@ -238,6 +252,8 @@ export function Stepper({
   step?: number;
   label: string;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n / step) * step));
   return (
     <View style={styles.stepper}>
@@ -285,6 +301,8 @@ export function EmptyState({
   body?: string;
   action?: ReactNode;
 }) {
+  const Colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
@@ -304,6 +322,7 @@ export function EmptyState({
 }
 
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.sectionHeader}>
       <T variant="label">{title}</T>
@@ -313,10 +332,13 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 }
 
 export function Divider() {
+  const styles = useStyles();
   return <View style={styles.divider} />;
 }
 
 export function Loading() {
+  const Colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.loading}>
       <ActivityIndicator color={Colors.primaryStrong} />
@@ -325,6 +347,8 @@ export function Loading() {
 }
 
 export function ErrorBanner({ message }: { message: string | null }) {
+  const Colors = useColors();
+  const styles = useStyles();
   if (!message) return null;
   return (
     <View style={styles.errorBanner}>
@@ -334,7 +358,7 @@ export function ErrorBanner({ message }: { message: string | null }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((Colors) => ({
   button: {
     minHeight: 48,
     paddingHorizontal: Spacing.lg,
@@ -427,4 +451,4 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   errorText: { color: Colors.danger, fontSize: 14, flex: 1 },
-});
+}));
