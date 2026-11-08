@@ -342,6 +342,21 @@ export async function listGallery(recipeId: string): Promise<GalleryPhoto[]> {
   return data as GalleryPhoto[];
 }
 
+/** A gallery photo with the recipe it was posted on, for the Gallery tab. */
+export type GalleryFeedPhoto = GalleryPhoto & { recipe: { id: string; title: string } | null };
+
+/** Everyone's food photos from every recipe, newest first, a page at a time. */
+export async function listAllGallery(page: number, pageSize = 30): Promise<GalleryFeedPhoto[]> {
+  const from = page * pageSize;
+  const { data, error } = await supabase
+    .from('recipe_gallery')
+    .select('*, author:profiles(display_name), recipe:recipes(id, title)')
+    .order('created_at', { ascending: false })
+    .range(from, from + pageSize - 1);
+  if (error) throw error;
+  return data as GalleryFeedPhoto[];
+}
+
 export async function addGalleryPhoto(recipeId: string, uri: string, mimeType = 'image/jpeg') {
   const path = await uploadPhoto(uri, mimeType);
   const { error } = await supabase.from('recipe_gallery').insert({ recipe_id: recipeId, photo_path: path });

@@ -88,7 +88,8 @@ export default function TabsLayout() {
         tabBarStyle: wide
           ? { backgroundColor: Colors.surface, borderRightWidth: 0, paddingTop: 16 }
           : { backgroundColor: Colors.surface, borderTopWidth: 0 },
-        tabBarLabelStyle: { fontSize: wide ? 15 : 11, fontWeight: '600' },
+        // Phones can have seven tabs (admins), so labels are a touch smaller to fit.
+        tabBarLabelStyle: { fontSize: wide ? 15 : 10, fontWeight: '600' },
       }}>
       <Tabs.Screen
         name="profile"
@@ -102,6 +103,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="index" options={{ title: 'Recipes', tabBarIcon: tabIcon('book', 'book-outline') }} />
+      <Tabs.Screen name="gallery" options={{ title: 'Gallery', tabBarIcon: tabIcon('images', 'images-outline') }} />
       <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
       <Tabs.Screen
         name="groceries"
