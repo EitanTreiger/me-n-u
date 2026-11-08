@@ -211,14 +211,13 @@ export default function HomesTab() {
 
       {panel === 'create' && (
         <Card style={styles.panel}>
-          <Field label="Home name" value={homeName} onChangeText={setHomeName} placeholder="e.g. Oak Avenue Home" />
+          <Field label="Home name (required)" value={homeName} onChangeText={setHomeName} placeholder="e.g. Oak Avenue Home" maxLength={80} />
           <T variant="small">{"You'll be its admin. Share its code or link so the people who live there can join."}</T>
           <Button
             title="Create home"
             icon="add"
             onPress={() => run(() => groups.createHome(homeName), `Created ${homeName.trim()}. Share its code or link so people can join.`)}
             loading={busy}
-            disabled={!homeName.trim()}
           />
         </Card>
       )}

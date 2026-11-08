@@ -99,14 +99,14 @@ export function HomeSetup({ title }: { title: string }) {
           <T variant="small">
             {"You'll be its admin: you plan its menu and grocery list, see its menu votes, and share its link so others can join."}
           </T>
-          <Field label="Home name" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" />
+          <Field label="Home name (required)" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" maxLength={80} />
           <Button
             title="Create home"
             icon="add"
             variant="secondary"
             onPress={() => run('create')}
             loading={busy === 'create'}
-            disabled={!name.trim() || !!busy}
+            disabled={!!busy}
           />
         </Card>
       </View>
