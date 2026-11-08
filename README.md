@@ -2,7 +2,7 @@
 
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
 
-- **Homes.** Each home has its own weekly menu, grocery list, pantry and admins. When you first sign in you create a home (and become its admin) or join one with its 6‑letter code or join link (`/join/<code>`). You can belong to several homes and switch between them in Settings (bottom left). Admin rights only apply to that home: to see another home's menu, join it. Menu votes count for one home and only its admins see them. Recipes, star ratings and photos (including each recipe's gallery) are shared by every home.
+- **Homes.** Each home has its own weekly menu, grocery list, pantry and admin. When you first sign in you choose: join a home (pick it from the list of homes, as a member) or create one (you name it and become its admin). Only a home's creator is its admin. Join links (`/join/<code>`) still work. You can belong to several homes and switch between them in Settings (bottom left). Menu votes count for one home and only its admin sees them. Recipes, star ratings and photos (including each recipe's gallery) are shared by every home.
 - **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Gemini converts the photo or video (it watches the video itself, so captions aren't needed) into an editable, structured recipe.
 - **Pantry and "what's missing".** Each person keeps a pantry list. Every recipe shows what you have and what you still need to buy.
 - **Ratings and consensus ranking.** Everyone rates recipes 1–5 stars. The **Top rated** list uses a Bayesian average, so one 5‑star vote can't outrank twenty 4.6s.
@@ -34,6 +34,7 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
      - [`20261107080000_homes.sql`](supabase/migrations/20261107080000_homes.sql) adds homes inside communities (per-home menus, groceries, pantry and invite codes).
      - [`20261107090000_home_access_and_votes.sql`](supabase/migrations/20261107090000_home_access_and_votes.sql) limits members to their own home and makes menu votes per home.
      - [`20261107100000_homes_first.sql`](supabase/migrations/20261107100000_homes_first.sql) makes homes the top level: admins per home, recipes and ratings shared by every home, and the recipe gallery.
+     - [`20261107110000_join_from_list_creator_admin.sql`](supabase/migrations/20261107110000_join_from_list_creator_admin.sql) lets people pick a home to join from a list and makes each home's creator its only admin.
 3. For quick testing, go to **Authentication → Providers → Email** and turn off **Confirm email** so new accounts can sign in right away.
 
 ### 2. Recipe converter (photo / YouTube → text)

@@ -2,11 +2,12 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { HomePicker } from '@/components/home-picker';
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, ErrorBanner, Field, Icon, SectionHeader, T } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
-import { listMembers, setMemberRole, type Member } from '@/lib/api';
+import { listMembers, type Member } from '@/lib/api';
 import { joinLink, shareInvite } from '@/lib/join-link';
 import { friendlyError } from '@/lib/supabase';
 import type { Home } from '@/lib/types';
@@ -22,7 +23,7 @@ export default function HomesTab() {
   const groups = useGroups();
   const { homes, activeHome, isAdmin } = groups;
   const [panel, setPanel] = useState<Panel>(homes.length ? 'none' : 'join');
-  const [code, setCode] = useState('');
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
   const [homeName, setHomeName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function HomesTab() {
     try {
       await fn();
       setPanel('none');
-      setCode('');
+      setPicked(null);
       setHomeName('');
       if (done) setNotice(done);
     } catch (e) {
@@ -67,22 +68,6 @@ export default function HomesTab() {
     try {
       const result = await shareInvite(home.name, home.invite_code);
       setNotice(result === 'copied' ? `Join link for ${home.name} copied: ${joinLink(home.invite_code)}` : null);
-    } catch (e) {
-      setError(friendlyError(e));
-    }
-  }
-
-  async function toggleRole(m: Member) {
-    if (!activeHome) return;
-    const next = m.role === 'admin' ? 'member' : 'admin';
-    if (next === 'member' && members.filter((x) => x.role === 'admin').length <= 1) {
-      setError('A home needs at least one admin.');
-      return;
-    }
-    try {
-      await setMemberRole(activeHome.id, m.user_id, next);
-      await loadMembers();
-      if (m.user_id === session?.user.id) await groups.refresh();
     } catch (e) {
       setError(friendlyError(e));
     }
@@ -156,18 +141,15 @@ export default function HomesTab() {
                     {m.display_name}
                     {m.user_id === session?.user.id ? ' (you)' : ''}
                   </T>
-                  {isAdmin ? (
-                    <Chip label={m.role === 'admin' ? 'Admin' : 'Member'} selected={m.role === 'admin'} onPress={() => toggleRole(m)} />
-                  ) : (
-                    m.role === 'admin' && <T variant="small">Admin</T>
-                  )}
+                  {/* Only the person who created the home is its admin. */}
+                  {m.role === 'admin' && <Chip label="Admin" selected />}
                 </View>
               </View>
             ))}
           </Card>
           {isAdmin && (
             <T variant="small" style={{ marginTop: Spacing.sm }}>
-              {`Tap a role to make someone an admin of ${activeHome.name}. Admins plan this home's menu and grocery list and see its menu votes; it gives them nothing in other homes.`}
+              {`You created ${activeHome.name}, so you're its admin: you plan its menu and grocery list and see its menu votes. It gives you nothing in other homes.`}
             </T>
           )}
         </>
@@ -194,25 +176,22 @@ export default function HomesTab() {
 
       {panel === 'join' && (
         <Card style={styles.panel}>
-          <Field
-            label="Home code"
-            value={code}
-            onChangeText={(v) => setCode(v.toUpperCase())}
-            placeholder="ABC234"
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={6}
-            style={styles.codeInput}
-          />
+          <T variant="label">Home</T>
+          <HomePicker value={picked} onChange={setPicked} />
           <T variant="small">{"You'll join as a member. You can belong to several homes and switch between them in Settings."}</T>
-          <Button title="Join home" onPress={() => run(() => groups.joinHome(code))} loading={busy} disabled={code.trim().length < 6} />
+          <Button
+            title="Join home"
+            icon="enter-outline"
+            onPress={() => run(() => (picked ? groups.joinHomeById(picked.id) : Promise.reject(new Error('Choose a home from the list first.'))))}
+            loading={busy}
+          />
         </Card>
       )}
 
       {panel === 'create' && (
         <Card style={styles.panel}>
           <Field label="Home name (required)" value={homeName} onChangeText={setHomeName} placeholder="e.g. Oak Avenue Home" maxLength={80} />
-          <T variant="small">{"You'll be its admin. Share its code or link so the people who live there can join."}</T>
+          <T variant="small">{"You'll be its admin (only a home's creator is). People can then pick it from the list, or use its link."}</T>
           <Button
             title="Create home"
             icon="add"
@@ -255,5 +234,4 @@ const useStyles = makeStyles((Colors) => ({
   avatarText: { color: Colors.primaryStrong, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: Spacing.sm },
   panel: { gap: Spacing.md, marginTop: Spacing.md },
-  codeInput: { fontSize: 20, letterSpacing: 4, fontWeight: '600' },
 }));

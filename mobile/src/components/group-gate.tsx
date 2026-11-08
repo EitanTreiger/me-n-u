@@ -8,7 +8,8 @@ import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 
 import { Screen } from './screen';
-import { Button, Card, ErrorBanner, Field, Icon, Loading, T } from './ui';
+import { HomePicker } from './home-picker';
+import { Button, Card, ErrorBanner, Field, Icon, Loading, T, type IconName } from './ui';
 
 /**
  * Renders children only when the user belongs to a home. Otherwise (right
@@ -23,28 +24,36 @@ export function GroupGate({ title, children }: { title: string; children: ReactN
 }
 
 /**
- * Create a home (you become its admin) or join one with its code. Join
- * links (/join/<code>) skip this screen.
+ * First step after signing in: choose to join an existing home (picked from
+ * the list, as a member) or create one (you name it and become its admin;
+ * creating a home is the only way to be an admin). Join links skip this.
  */
 export function HomeSetup({ title }: { title: string }) {
   const Colors = useColors();
   const styles = useStyles();
   const { displayName } = useAuth();
-  const { createHome, joinHome } = useGroups();
+  const { createHome, joinHomeById } = useGroups();
+  const [choice, setChoice] = useState<'join' | 'create' | null>(null);
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState<'create' | 'join' | null>(null);
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(kind: 'create' | 'join') {
-    setBusy(kind);
+  function choose(next: 'join' | 'create' | null) {
+    setChoice(next);
+    setError(null);
+  }
+
+  async function submit() {
+    setBusy(true);
     setError(null);
     try {
-      if (kind === 'create') await createHome(name);
-      else await joinHome(code);
+      if (choice === 'create') await createHome(name);
+      else if (picked) await joinHomeById(picked.id);
+      else throw new Error('Choose your home from the list first.');
     } catch (e) {
       setError(friendlyError(e));
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -54,66 +63,80 @@ export function HomeSetup({ title }: { title: string }) {
         <T variant="heading">Welcome{displayName ? `, ${displayName}` : ''}!</T>
         <T variant="small">
           Each home has its own weekly menu, grocery list and pantry. Recipes, ratings and photos are shared by every home.
-          Create your home, or join it with the code or link from its admin.
         </T>
       </View>
 
-      {/* Stacked on every screen size: join first (most people), create below. */}
-      <View style={styles.options}>
-        <Card style={styles.option}>
-          <View style={styles.optionHeader}>
-            <View style={styles.optionIcon}>
-              <Icon name="enter-outline" size={20} color={Colors.onPrimary} />
-            </View>
-            <T variant="subheading">Join a home</T>
-          </View>
-          <T variant="small">
-            {"You'll join as a member: you'll see its menu, grocery list and pantry, and can vote for meals."}
-          </T>
-          <Field
-            label="Home code"
-            value={code}
-            onChangeText={(v) => setCode(v.toUpperCase())}
-            placeholder="ABC234"
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={6}
-            style={styles.codeInput}
-          />
-          <Button
-            title="Join home"
+      {choice === null ? (
+        // Step 1: join or create.
+        <View style={styles.options}>
+          <T variant="subheading">Are you joining a home or creating one?</T>
+          <ChoiceCard
             icon="enter-outline"
-            onPress={() => run('join')}
-            loading={busy === 'join'}
-            disabled={code.trim().length < 6 || !!busy}
+            title="Join a home"
+            body="Pick your home from the list. You'll be a member: you'll see its menu, grocery list and pantry, and can vote for meals."
+            onPress={() => choose('join')}
           />
-        </Card>
-
+          <ChoiceCard
+            icon="home-outline"
+            title="Create a home"
+            body="Name a new home. You'll be its admin: you plan its menu and grocery list and see its menu votes."
+            onPress={() => choose('create')}
+          />
+        </View>
+      ) : (
+        // Step 2: the form for that choice.
         <Card style={styles.option}>
           <View style={styles.optionHeader}>
             <View style={styles.optionIcon}>
-              <Icon name="home-outline" size={20} color={Colors.onPrimary} />
+              <Icon name={choice === 'join' ? 'enter-outline' : 'home-outline'} size={20} color={Colors.onPrimary} />
             </View>
-            <T variant="subheading">Create a home</T>
+            <T variant="subheading">{choice === 'join' ? 'Join a home' : 'Create a home'}</T>
           </View>
-          <T variant="small">
-            {"You'll be its admin: you plan its menu and grocery list, see its menu votes, and share its link so others can join."}
-          </T>
-          <Field label="Home name (required)" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" maxLength={80} />
-          <Button
-            title="Create home"
-            icon="add"
-            variant="secondary"
-            onPress={() => run('create')}
-            loading={busy === 'create'}
-            disabled={!!busy}
-          />
+          {choice === 'join' ? (
+            <>
+              <T variant="label">Your home</T>
+              <HomePicker value={picked} onChange={setPicked} />
+              <T variant="small">{"You'll join as a member."}</T>
+            </>
+          ) : (
+            <>
+              <Field label="Home name (required)" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" maxLength={80} onSubmitEditing={submit} />
+              <T variant="small">{"You'll be its admin. Only the person who creates a home is its admin."}</T>
+            </>
+          )}
+          <ErrorBanner message={error} />
+          <View style={styles.formActions}>
+            <Button title="Back" variant="secondary" onPress={() => choose(null)} disabled={busy} style={{ flex: 1 }} />
+            <Button
+              title={choice === 'join' ? 'Join home' : 'Create home'}
+              icon={choice === 'join' ? 'enter-outline' : 'add'}
+              onPress={submit}
+              loading={busy}
+              style={{ flex: 2 }}
+            />
+          </View>
         </Card>
-      </View>
-      <View style={{ marginTop: Spacing.md }}>
-        <ErrorBanner message={error} />
-      </View>
+      )}
     </Screen>
+  );
+}
+
+function ChoiceCard({ icon, title, body, onPress }: { icon: IconName; title: string; body: string; onPress: () => void }) {
+  const Colors = useColors();
+  const styles = useStyles();
+  return (
+    <Card onPress={onPress} style={styles.option}>
+      <View style={styles.optionHeader}>
+        <View style={styles.optionIcon}>
+          <Icon name={icon} size={20} color={Colors.onPrimary} />
+        </View>
+        <T variant="subheading" style={{ flex: 1 }}>
+          {title}
+        </T>
+        <Icon name="chevron-forward" size={20} color={Colors.textMuted} />
+      </View>
+      <T variant="small">{body}</T>
+    </Card>
   );
 }
 
@@ -130,5 +153,5 @@ const useStyles = makeStyles((Colors) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  codeInput: { fontSize: 20, letterSpacing: 4, fontWeight: '600' },
+  formActions: { flexDirection: 'row', gap: Spacing.sm },
 }));
