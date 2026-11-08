@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy policy · me-n-u</title>
+  <!-- A plain page outside the app, so it opens without signing in and never
+       gets in the way of the app's own navigation. Served at /privacy. -->
+  <style>
+    :root { --bg: #F7F8F7; --surface: #FFFFFF; --text: #1E2B22; --muted: #5D6B62; --accent: #4E6E56; --border: #E3E8E4; color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #131714; --surface: #1B201D; --text: #E6ECE7; --muted: #A3B0A7; --accent: #A8C7AE; --border: #2C342F; color-scheme: dark; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 28px; margin: 0 0 4px; }
+    h2 { font-size: 18px; margin: 28px 0 8px; }
+    p { margin: 0 0 10px; }
+    .updated { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+    a { color: var(--accent); font-weight: 600; }
+    .back { display: inline-block; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy policy</h1>
+    <p class="updated">Last updated 8 November 2026</p>
+
+    <h2>What me-n-u is</h2>
+    <p>me-n-u is a prototype app for group homes to share recipes, plan weekly menus, build grocery lists and share photos of the food they make.</p>
+
+    <h2>What we collect</h2>
+    <p>When you sign in with Google we receive your name, email address and profile picture. We use them only to create your account and show your name to the members of your own home.</p>
+    <p>We store what you add to the app: recipes, ratings, menu plans, menu votes, grocery list items, photos, and which homes you belong to.</p>
+
+    <h2>Who can see it</h2>
+    <p>Recipes, ratings and gallery photos are shared with everyone who uses the app. Gallery photos are labelled with the home they came from, never with your name, and recipes do not show who shared them.</p>
+    <p>Each home's weekly menu, menu votes and grocery list are only visible to that home's members.</p>
+
+    <h2>Services we use</h2>
+    <p>Supabase stores the app data and photos and handles sign-in. Vercel hosts the website.</p>
+    <p>When you convert a recipe from a photo or a YouTube video, that photo or link is sent to Google Gemini to read the recipe. When you listen to a recipe, the text of its steps is sent to ElevenLabs to turn it into speech.</p>
+    <p>We do not sell your information or use it for advertising.</p>
+
+    <h2>Keeping or deleting your data</h2>
+    <p>You can delete your own photos in the app. To have your account and everything you added removed, ask an admin of your home or contact the me-n-u team, and we will delete it.</p>
+
+    <h2>Please do not share</h2>
+    <p>Do not post photos of people or any personal or health information. Photos are meant to show food.</p>
+
+    <a class="back" href="/">Go to me-n-u</a>
+  </main>
+</body>
+</html>
