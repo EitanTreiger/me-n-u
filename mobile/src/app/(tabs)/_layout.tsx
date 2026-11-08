@@ -1,12 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BottomTabBar, Tabs } from 'expo-router/tabs';
-import type { ComponentProps } from 'react';
-import { View, type ColorValue } from 'react-native';
+import { BottomTabBar, Tabs, type BottomTabBarButtonProps } from 'expo-router/tabs';
+import { useState, type ComponentProps } from 'react';
+import { Pressable, View, type ColorValue } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
-import { SettingsLogo, Wordmark } from '@/components/logo-menu';
+import { Avatar, SettingsLogo, SettingsMenu, Wordmark } from '@/components/logo-menu';
 import { useLayout } from '@/hooks/use-layout';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -29,16 +29,29 @@ function MobileTopBar() {
   );
 }
 
+// Open on Recipes, not the Profile tab that comes first in the bar.
+export const unstable_settings = { initialRouteName: 'index' };
+
 export default function TabsLayout() {
   const Colors = useColors();
   const styles = useStyles();
   // Computers and big tablets get a sidebar; phones keep the bottom tab bar.
   const { wide } = useLayout();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Phones: the Profile tab is a real tab (so it lines up with the others),
+  // but tapping it opens the Settings menu instead of a page.
+  const profileButton = ({ children, style }: BottomTabBarButtonProps) => (
+    <Pressable onPress={() => setSettingsOpen(true)} accessibilityRole="button" accessibilityLabel="Settings" style={style}>
+      {children}
+    </Pressable>
+  );
+
   return (
+    <>
     <Tabs
-      // The usual tab bar plus the settings logo in the bottom-left corner:
-      // under the sidebar on computers, at the left end of the tab bar on phones.
-      // On computers the logo and name sit at the top of the sidebar.
+      // Computers: logo at the top of the sidebar, profile and settings at the
+      // bottom. Phones: logo in the top bar, Profile as the first tab.
       tabBar={(props) =>
         wide ? (
           <View style={styles.sidebar}>
@@ -54,10 +67,7 @@ export default function TabsLayout() {
           </View>
         ) : (
           <View style={styles.bottomBar}>
-            <SettingsLogo compact />
-            <View style={{ flex: 1 }}>
-              <BottomTabBar {...props} />
-            </View>
+            <BottomTabBar {...props} />
           </View>
         )
       }
@@ -71,18 +81,31 @@ export default function TabsLayout() {
         tabBarActiveTintColor: Colors.primaryStrong,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarActiveBackgroundColor: wide ? Colors.primarySoft : undefined,
-        // Borders are drawn by the wrappers below so the settings logo shares them.
+        // Borders are drawn by the wrappers above.
         tabBarStyle: wide
           ? { backgroundColor: Colors.surface, borderRightWidth: 0, paddingTop: 16 }
           : { backgroundColor: Colors.surface, borderTopWidth: 0 },
         tabBarLabelStyle: { fontSize: wide ? 15 : 11, fontWeight: '600' },
       }}>
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          // Computers have the profile at the bottom of the sidebar instead.
+          href: wide ? null : undefined,
+          tabBarIcon: ({ size }) => <Avatar size={size} />,
+          // Expo Router refuses `href` and `tabBarButton` together, so only phones get the button.
+          tabBarButton: wide ? undefined : profileButton,
+        }}
+      />
       <Tabs.Screen name="index" options={{ title: 'Recipes', tabBarIcon: tabIcon('book', 'book-outline') }} />
       <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
       <Tabs.Screen name="groceries" options={{ title: 'Groceries', tabBarIcon: tabIcon('cart', 'cart-outline') }} />
       <Tabs.Screen name="pantry" options={{ title: 'Pantry', tabBarIcon: tabIcon('basket', 'basket-outline') }} />
       <Tabs.Screen name="groups" options={{ title: 'Homes', tabBarIcon: tabIcon('home', 'home-outline') }} />
     </Tabs>
+    <SettingsMenu open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   );
 }
 
@@ -93,8 +116,6 @@ const useStyles = makeStyles((Colors) => ({
   topBar: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
   topBarInner: { height: 48, alignItems: 'center', justifyContent: 'center' },
   bottomBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
