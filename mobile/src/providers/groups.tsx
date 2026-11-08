@@ -25,10 +25,12 @@ type GroupsState = {
   loading: boolean;
   setActiveHome: (homeId: string) => void;
   refresh: () => Promise<void>;
-  /** Create a home; the creator becomes its admin. */
+  /** Create a home; the creator becomes its admin (the only way to be one). */
   createHome: (name: string) => Promise<string>;
-  /** Join a home as a member with its code. */
+  /** Join a home as a member with its code (join links). */
   joinHome: (code: string) => Promise<string>;
+  /** Join a home picked from the list, as a member. */
+  joinHomeById: (homeId: string) => Promise<string>;
   leaveHome: (homeId: string) => Promise<void>;
 };
 
@@ -136,6 +138,13 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         return homeId as string;
       },
       joinHome,
+      joinHomeById: async (homeId) => {
+        const { error } = await supabase.rpc('join_home_by_id', { hid: homeId });
+        if (error) throw error;
+        await refresh();
+        setActiveHome(homeId);
+        return homeId;
+      },
       leaveHome: async (homeId) => {
         const { error } = await supabase.from('home_members').delete().eq('home_id', homeId).eq('user_id', userId!);
         if (error) throw error;

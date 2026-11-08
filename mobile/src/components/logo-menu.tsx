@@ -20,8 +20,8 @@ const NOTIFY_KEY = 'notificationsOn';
 
 const HELP = [
   'Homes: each home has its own menu, grocery list and pantry. Switch homes above.',
-  "Join another home with its code or link on the Homes tab. Admins find their home's link there.",
-  'Admins plan the weekly menu and see menu votes for their own home only.',
+  'Join another home by picking it from the list on the Homes tab, or with its link.',
+  "Only the person who creates a home is its admin: they plan its menu and see its menu votes.",
   'Recipes, ratings and gallery photos are shared by every home.',
 ];
 

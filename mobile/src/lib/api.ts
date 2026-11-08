@@ -306,10 +306,11 @@ export async function listMembers(homeId: string): Promise<Member[]> {
   );
 }
 
-/** Make someone an admin or member of a home (the home's admins only). */
-export async function setMemberRole(homeId: string, userId: string, role: 'admin' | 'member') {
-  const { error } = await supabase.from('home_members').update({ role }).eq('home_id', homeId).eq('user_id', userId);
+/** Every home's name (not its menu or pantry), for picking one to join. */
+export async function listAllHomes(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await supabase.rpc('list_homes');
   if (error) throw error;
+  return (data ?? []) as { id: string; name: string }[];
 }
 
 // --- Gallery ----------------------------------------------------------------
