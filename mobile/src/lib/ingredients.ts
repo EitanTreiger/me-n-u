@@ -253,6 +253,31 @@ export type GroceryLine = {
   recipes: string[];
 };
 
+/**
+ * Does the pantry cover a grocery line?
+ * - 'buy': not in the pantry, buy it all.
+ * - 'short': some in the pantry; `quantity` is what's still needed
+ *   (need 12 eggs, have 2 -> buy 10).
+ * - 'covered': enough in the pantry. Items "in stock" without an amount
+ *   (salt, oils...), "to taste" lines and amounts in units that can't be
+ *   compared (2 cups vs 1 lb) count as covered.
+ */
+export function pantryCoverage(
+  pantry: { name: string; quantity: number; unit: string }[],
+  line: { name: string; quantity: number; unit: string },
+): { status: 'buy' } | { status: 'short'; quantity: number; have: number } | { status: 'covered' } {
+  if (!pantryHas(pantry.map((p) => p.name), line.name)) return { status: 'buy' };
+  const item = pantry.find((p) => pantryHas([p.name], line.name));
+  // Matched an always-on-hand item (water), an amount-less staple, or a "to taste" line.
+  if (!item || item.quantity <= 0 || line.quantity <= 0) return { status: 'covered' };
+  const pantryUnit = normalizeUnit(item.unit);
+  const lineUnit = normalizeUnit(line.unit);
+  const have = pantryUnit === lineUnit ? item.quantity : convertWeight(item.quantity, pantryUnit, lineUnit);
+  if (have === null) return { status: 'covered' };
+  const need = Math.round((line.quantity - have) * 100) / 100;
+  return need > 0 ? { status: 'short', quantity: need, have } : { status: 'covered' };
+}
+
 /** Combine ingredients from many recipes into one shopping list. */
 export function aggregateIngredients(entries: { recipeTitle: string; ingredients: Ingredient[] }[]): GroceryLine[] {
   const lines = new Map<string, GroceryLine>();
