@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { StyleSheet, useColorScheme } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
+import { Platform, StyleSheet, useColorScheme } from 'react-native';
 
 import { DarkColors, LightColors, type Palette } from '@/constants/theme';
 
@@ -48,6 +49,23 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       colors: scheme === 'dark' ? DarkColors : LightColors,
     };
   }, [preference, system]);
+
+  // Paint behind the app in the theme's colour, so scrolling past the top or
+  // bottom (overscroll / rubber-banding) never shows a white page underneath.
+  useEffect(() => {
+    const bg = value.colors.background;
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      for (const el of [document.documentElement, document.body]) {
+        el.style.backgroundColor = bg;
+        el.style.colorScheme = value.scheme;
+      }
+      const root = document.getElementById('root');
+      if (root) root.style.backgroundColor = bg;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
+    } else {
+      SystemUI.setBackgroundColorAsync(bg).catch(() => {});
+    }
+  }, [value.colors.background, value.scheme]);
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }

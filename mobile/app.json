@@ -22,7 +22,8 @@
     },
     "web": {
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "backgroundColor": "#F7F8F7"
     },
     "plugins": [
       "expo-router",
@@ -46,6 +47,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "backgroundColor": "#F7F8F7"
   }
 }
