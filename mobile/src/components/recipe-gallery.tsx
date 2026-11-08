@@ -5,10 +5,11 @@ import { Modal, Platform, Pressable, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
-import { addGalleryPhoto, deleteGalleryPhoto, listGallery, type GalleryPhoto } from '@/lib/api';
+import { addGalleryPhoto, deleteGalleryPhoto, galleryCredit, listGallery, type GalleryPhoto } from '@/lib/api';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import { makeStyles, useColors } from '@/providers/appearance';
 import { useAuth } from '@/providers/auth';
+import { useGroups } from '@/providers/groups';
 
 import { Button, Card, ErrorBanner, IconButton, Loading, SectionHeader, T } from './ui';
 
@@ -24,6 +25,7 @@ export function RecipeGallery({ recipeId }: { recipeId: string }) {
   const Colors = useColors();
   const styles = useStyles();
   const userId = useAuth().session?.user.id;
+  const { activeHome } = useGroups();
   const { wide } = useLayout();
   const [photos, setPhotos] = useState<GalleryPhoto[] | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -65,7 +67,7 @@ export function RecipeGallery({ recipeId }: { recipeId: string }) {
     if (!asset) return;
     setUploading(true);
     try {
-      await addGalleryPhoto(recipeId, asset.uri, asset.mimeType ?? 'image/jpeg');
+      await addGalleryPhoto(recipeId, activeHome?.id ?? null, asset.uri, asset.mimeType ?? 'image/jpeg');
       await load();
     } catch (e) {
       setError(friendlyError(e));
@@ -122,7 +124,7 @@ export function RecipeGallery({ recipeId }: { recipeId: string }) {
                 key={p.id}
                 onPress={() => setViewing(p)}
                 accessibilityRole="imagebutton"
-                accessibilityLabel={`Photo by ${p.author?.display_name || 'someone'}`}
+                accessibilityLabel={`Photo, ${galleryCredit(p)}`}
                 style={({ pressed }) => [styles.tile, { width: `${100 / columns}%` }, pressed && { opacity: 0.8 }]}>
                 <Image source={{ uri: photoUrl(p.photo_path)! }} style={styles.tileImage} contentFit="cover" transition={150} />
               </Pressable>
@@ -138,7 +140,7 @@ export function RecipeGallery({ recipeId }: { recipeId: string }) {
               <Image source={{ uri: photoUrl(viewing.photo_path)! }} style={styles.viewerImage} contentFit="contain" />
               <View style={styles.viewerBar}>
                 <View style={{ flex: 1 }}>
-                  <T style={{ fontWeight: '600' }}>{viewing.author?.display_name || 'Someone'}</T>
+                  <T style={{ fontWeight: '600' }}>{galleryCredit(viewing)}</T>
                   <T variant="small">{shortDate(viewing.created_at)}</T>
                 </View>
                 {viewing.user_id === userId && (
