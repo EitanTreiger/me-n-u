@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 
+import { HomeSwitcher } from '@/components/home-switcher';
 import { RecipeThumb } from '@/components/recipe-card';
 import { Button, Card, Chip, ErrorBanner, Icon, Loading, Stars, Stepper, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
@@ -27,7 +28,7 @@ export default function MenuPick() {
   const Colors = useColors();
   const styles = useStyles();
   const params = useLocalSearchParams<{ week?: string; day?: string; meal?: Meal; recipeId?: string; people?: string }>();
-  const { active, isAdmin } = useGroups();
+  const { active, activeHome, isAdmin } = useGroups();
   const [week, setWeek] = useState(params.week ?? weekStart());
   const [day, setDay] = useState<number>(params.day ? Number(params.day) : (new Date().getDay() + 6) % 7);
   const [meal, setMeal] = useState<Meal>(params.meal ?? 'dinner');
@@ -37,15 +38,15 @@ export default function MenuPick() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // How many people this meal is for. Starts from the recipe page's choice,
-  // else the number this admin last used for the group.
+  // else the number this admin last used for this home.
   const [people, setPeople] = useState<number | null>(params.people ? Number(params.people) : null);
 
   const slotFixed = params.day !== undefined && params.meal !== undefined;
 
   useEffect(() => {
-    if (!active || params.people) return;
+    if (!activeHome || params.people) return;
     let alive = true;
-    AsyncStorage.getItem(`${PEOPLE_KEY}:${active.id}`)
+    AsyncStorage.getItem(`${PEOPLE_KEY}:${activeHome.id}`)
       .then((v) => {
         if (alive && v && Number(v) > 0) setPeople((p) => p ?? Number(v));
       })
@@ -53,15 +54,16 @@ export default function MenuPick() {
     return () => {
       alive = false;
     };
-  }, [active, params.people]);
+  }, [activeHome, params.people]);
 
   useEffect(() => {
     if (!active) return;
-    listRecipes(active.id)
+    // Votes from the home whose menu this is.
+    listRecipes(active.id, activeHome?.id)
       // Recipes members voted for come first, then the best rated.
       .then((r) => setRecipes(r.sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats))))
       .catch((e) => setError(friendlyError(e)));
-  }, [active]);
+  }, [active, activeHome]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -80,11 +82,11 @@ export default function MenuPick() {
   const cookingFor = people ?? selectedRecipe?.servings ?? 4;
 
   async function save() {
-    if (!active || !recipeId) return;
+    if (!activeHome || !recipeId) return;
     setSaving(true);
     try {
-      await addMenuItem(active.id, week, day, meal, recipeId, cookingFor);
-      AsyncStorage.setItem(`${PEOPLE_KEY}:${active.id}`, String(cookingFor)).catch(() => {});
+      await addMenuItem(activeHome.id, week, day, meal, recipeId, cookingFor);
+      AsyncStorage.setItem(`${PEOPLE_KEY}:${activeHome.id}`, String(cookingFor)).catch(() => {});
       router.back();
     } catch (e) {
       setError(friendlyError(e));
@@ -95,6 +97,11 @@ export default function MenuPick() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* The meal goes on this home's menu; from a recipe, the admin can pick another home. */}
+        <View style={styles.homeRow}>
+          <T variant="label">Home</T>
+          {slotFixed ? <T variant="small">{activeHome?.name}</T> : <HomeSwitcher />}
+        </View>
         {!slotFixed && (
           <>
             <WeekSwitcher week={week} onChange={setWeek} />
@@ -205,6 +212,7 @@ export default function MenuPick() {
 }
 
 const useStyles = makeStyles((Colors) => ({
+  homeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
   content: { padding: Spacing.lg, paddingBottom: 120, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', gap: Spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   peopleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },

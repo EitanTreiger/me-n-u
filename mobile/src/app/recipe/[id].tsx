@@ -39,7 +39,9 @@ export default function RecipeDetail() {
   const Colors = useColors();
   const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isAdmin } = useGroups();
+  const { isAdmin, activeHome } = useGroups();
+  // Menu votes are per home; ratings are shared by the whole community.
+  const homeId = activeHome?.id;
   const pantry = usePantry();
   const { wide, contentWidth } = useLayout();
   const [recipe, setRecipe] = useState<RecipeWithStats | null>(null);
@@ -60,7 +62,7 @@ export default function RecipeDetail() {
 
   useEffect(() => {
     let alive = true;
-    getRecipe(id)
+    getRecipe(id, homeId)
       .then((res) => {
         if (!alive) return;
         setRecipe(res.recipe);
@@ -71,7 +73,7 @@ export default function RecipeDetail() {
     return () => {
       alive = false;
     };
-  }, [id]);
+  }, [id, homeId]);
 
   if (error && !recipe) {
     return (
@@ -93,7 +95,7 @@ export default function RecipeDetail() {
   const times = recipe.video_url && recipe.step_timestamps?.length === recipe.steps.length ? recipe.step_timestamps : null;
 
   async function refreshRecipe() {
-    const res = await getRecipe(recipe!.id);
+    const res = await getRecipe(recipe!.id, homeId);
     setRecipe(res.recipe);
   }
 
@@ -110,9 +112,10 @@ export default function RecipeDetail() {
   }
 
   async function toggleVote() {
+    if (!homeId) return;
     setVoting(true);
     try {
-      await setMenuVote(recipe!.id, !recipe!.myVote);
+      await setMenuVote(recipe!.id, homeId, !recipe!.myVote);
       await refreshRecipe();
     } catch (e) {
       setError(friendlyError(e));
@@ -236,6 +239,7 @@ export default function RecipeDetail() {
             variant={recipe.myVote ? 'primary' : 'secondary'}
             onPress={toggleVote}
             loading={voting}
+            disabled={!homeId}
             style={{ flex: 1 }}
           />
         )}
@@ -244,9 +248,12 @@ export default function RecipeDetail() {
           <Button title="Completed" icon="checkmark-done-outline" variant="secondary" onPress={openMadeIt} style={{ flex: 1 }} />
         )}
       </View>
-      {isAdmin && recipe.votes > 0 && (
+      {/* Votes are counted per home; admins see the home they're viewing. */}
+      {activeHome && (isAdmin ? recipe.votes > 0 : true) && (
         <T variant="small" style={{ marginTop: Spacing.xs }}>
-          {recipe.votes} member{recipe.votes === 1 ? '' : 's'} voted for this on the menu.
+          {isAdmin
+            ? `${recipe.votes} ${recipe.votes === 1 ? 'person' : 'people'} at ${activeHome.name} voted for this on the menu this week.`
+            : `Your vote counts toward ${activeHome.name}'s menu.`}
         </T>
       )}
       {doneMessage && <T variant="small" style={{ color: Colors.success, marginTop: Spacing.sm }}>{doneMessage}</T>}

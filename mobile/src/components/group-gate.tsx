@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -8,17 +9,33 @@ import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 
 import { Screen } from './screen';
-import { Button, Card, ErrorBanner, Field, Icon, Loading, T } from './ui';
+import { Button, Card, EmptyState, ErrorBanner, Field, Icon, Loading, T } from './ui';
 
 /**
  * Renders children only when the user belongs to a community. Otherwise
  * (right after sign-up, or after leaving their only community) it shows the
- * create-or-join choice in place.
+ * create-or-join choice in place. With `needsHome` (menu, groceries, pantry)
+ * the community must also have a home.
  */
-export function GroupGate({ title, children }: { title: string; children: ReactNode }) {
-  const { active, loading } = useGroups();
+export function GroupGate({ title, children, needsHome }: { title: string; children: ReactNode; needsHome?: boolean }) {
+  const { active, activeHome, isAdmin, loading, homesLoading } = useGroups();
   if (loading) return <Loading />;
   if (!active) return <CommunitySetup title={title} />;
+  if (needsHome && homesLoading) return <Loading />;
+  if (needsHome && !activeHome) {
+    return (
+      <Screen title={title}>
+        <Card>
+          <EmptyState
+            icon="home-outline"
+            title={isAdmin ? 'No homes yet' : 'No home yet'}
+            body={isAdmin ? 'Add a home on the Groups page to plan its menu.' : "You're not in a home yet. Ask an admin for your home's join link or code."}
+            action={isAdmin ? <Button title="Go to Groups" onPress={() => router.navigate('/groups')} /> : undefined}
+          />
+        </Card>
+      </Screen>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -26,7 +43,7 @@ export function CommunitySetup({ title }: { title: string }) {
   const Colors = useColors();
   const styles = useStyles();
   const { displayName } = useAuth();
-  const { createGroup, joinGroup } = useGroups();
+  const { createGroup, joinHome } = useGroups();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
@@ -37,7 +54,7 @@ export function CommunitySetup({ title }: { title: string }) {
     setError(null);
     try {
       if (kind === 'create') await createGroup(name, '');
-      else await joinGroup(code);
+      else await joinHome(code);
     } catch (e) {
       setError(friendlyError(e));
       setBusy(null);
@@ -49,8 +66,8 @@ export function CommunitySetup({ title }: { title: string }) {
       <View style={styles.intro}>
         <T variant="heading">Welcome{displayName ? `, ${displayName}` : ''}!</T>
         <T variant="small">
-          Recipes, weekly menus and grocery lists are shared inside a community, like your home. Start one, or join one with
-          an invite code from its admin.
+          A community shares one recipe book, and each home in it has its own weekly menu, grocery list and pantry. Start a
+          community, or join your home with the code or link from an admin.
         </T>
       </View>
 
@@ -64,7 +81,7 @@ export function CommunitySetup({ title }: { title: string }) {
             <T variant="subheading">Start a community</T>
           </View>
           <T variant="small">
-            {"You'll be its admin: you plan the weekly menu, invite people and can make others admins."}
+            {"You'll be its admin: you add homes, plan their menus, invite people and can make others admins. Your first home gets the same name; you can add more later."}
           </T>
           <Field label="Community name" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" />
           <Button title="Create community" icon="add" onPress={() => run('create')} loading={busy === 'create'} disabled={!name.trim() || !!busy} />
@@ -75,7 +92,7 @@ export function CommunitySetup({ title }: { title: string }) {
             <View style={styles.optionIcon}>
               <Icon name="enter-outline" size={20} color={Colors.onPrimary} />
             </View>
-            <T variant="subheading">Join with a code</T>
+            <T variant="subheading">Join your home</T>
           </View>
           <T variant="small">
             {
@@ -83,7 +100,7 @@ export function CommunitySetup({ title }: { title: string }) {
             }
           </T>
           <Field
-            label="Invite code"
+            label="Home code"
             value={code}
             onChangeText={(v) => setCode(v.toUpperCase())}
             placeholder="ABC234"
@@ -93,7 +110,7 @@ export function CommunitySetup({ title }: { title: string }) {
             style={styles.codeInput}
           />
           <Button
-            title="Join community"
+            title="Join home"
             icon="enter-outline"
             variant="secondary"
             onPress={() => run('join')}

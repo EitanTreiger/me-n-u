@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, Share, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
+import { HomeSwitcher } from '@/components/home-switcher';
 import { Screen } from '@/components/screen';
 import { Button, Card, Divider, EmptyState, ErrorBanner, Field, Icon, IconButton, Loading, SectionHeader, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
@@ -39,7 +40,7 @@ function GroceryList() {
   const Colors = useColors();
   const styles = useStyles();
   const params = useLocalSearchParams<{ week?: string }>();
-  const { active, isAdmin } = useGroups();
+  const { activeHome, isAdmin } = useGroups();
   const pantry = usePantry();
   const [week, setWeek] = useState(params.week ?? weekStart());
   const [menu, setMenu] = useState<MenuItem[] | null>(null);
@@ -48,7 +49,8 @@ function GroceryList() {
   const [newExtra, setNewExtra] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const groupId = active!.id;
+  // Each home shops for its own menu.
+  const homeId = activeHome!.id;
 
   // When the Menu tab links here with a week, follow it.
   const [linkedWeek, setLinkedWeek] = useState(params.week);
@@ -59,7 +61,7 @@ function GroceryList() {
 
   const load = useCallback(async () => {
     try {
-      const [m, state] = await Promise.all([listMenu(groupId, week), listGroceryState(groupId, week)]);
+      const [m, state] = await Promise.all([listMenu(homeId, week), listGroceryState(homeId, week)]);
       setMenu(m);
       setCheckedKeys(state.checked);
       setExtras(state.extras);
@@ -67,7 +69,7 @@ function GroceryList() {
     } catch (e) {
       setError(friendlyError(e));
     }
-  }, [groupId, week]);
+  }, [homeId, week]);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,7 +108,7 @@ function GroceryList() {
       return s;
     });
     try {
-      await setChecked(groupId, week, key, next);
+      await setChecked(homeId, week, key, next);
     } catch (e) {
       setError(friendlyError(e));
       load();
@@ -116,7 +118,7 @@ function GroceryList() {
   async function addExtra() {
     if (!newExtra.trim()) return;
     try {
-      await addGroceryExtra(groupId, week, newExtra);
+      await addGroceryExtra(homeId, week, newExtra);
       setNewExtra('');
       load();
     } catch (e) {
@@ -127,7 +129,7 @@ function GroceryList() {
   async function share() {
     const items = [...toBuy.map(lineText), ...extras.map((e) => e.name)];
     await Share.share({
-      message: `Groceries for ${active!.name} (${weekLabel(week)}):\n\n${items.map((i) => `• ${i}`).join('\n')}`,
+      message: `Groceries for ${activeHome!.name} (${weekLabel(week)}):\n\n${items.map((i) => `• ${i}`).join('\n')}`,
     });
   }
 
@@ -136,7 +138,12 @@ function GroceryList() {
   return (
     <Screen
       title="Groceries"
-      subtitle={menu ? `${recipeCount} recipe${recipeCount === 1 ? '' : 's'} on the menu` : undefined}
+      subtitle={
+        <View style={{ gap: Spacing.xs }}>
+          <HomeSwitcher />
+          {menu && <T variant="small">{`${recipeCount} recipe${recipeCount === 1 ? '' : 's'} on the menu`}</T>}
+        </View>
+      }
       right={total > 0 ? <IconButton name="share-outline" label="Share list" onPress={share} /> : undefined}
       refreshing={refreshing}
       onRefresh={async () => {
@@ -286,7 +293,7 @@ function Line({
 
 export default function GroceriesTab() {
   return (
-    <GroupGate title="Groceries">
+    <GroupGate title="Groceries" needsHome>
       <GroceryList />
     </GroupGate>
   );

@@ -11,6 +11,17 @@ export type Group = {
 
 export type Membership = Group & { role: Role };
 
+/** A home inside a community: it has its own menu, groceries, pantry and invite code. */
+export type Home = {
+  id: string;
+  group_id: string;
+  name: string;
+  invite_code: string;
+  created_at: string;
+  /** user_ids of the people who joined this home */
+  members: string[];
+};
+
 export type Ingredient = {
   name: string;
   quantity: number; // 0 when unspecified ("to taste")

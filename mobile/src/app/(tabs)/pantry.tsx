@@ -2,6 +2,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
+import { GroupGate } from '@/components/group-gate';
+import { HomeSwitcher } from '@/components/home-switcher';
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, EmptyState, ErrorBanner, Field, IconButton, Loading, SectionHeader, Stepper, T } from '@/components/ui';
 import { InputText, Spacing } from '@/constants/theme';
@@ -20,7 +22,7 @@ function parseAmount(text: string): number {
   return parseIngredientLine(`${text.trim()} x`)?.quantity ?? (Number(text) || 0);
 }
 
-export default function PantryTab() {
+function PantryList() {
   const Colors = useColors();
   const styles = useStyles();
   const pantry = usePantry();
@@ -117,7 +119,12 @@ export default function PantryTab() {
   return (
     <Screen
       title="Pantry"
-      subtitle="Your community's shared pantry. Recipes show what you still need to buy."
+      subtitle={
+        <View style={{ gap: Spacing.xs }}>
+          <HomeSwitcher />
+          <T variant="small">{"This home's shared pantry. Recipes show what you still need to buy."}</T>
+        </View>
+      }
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -317,10 +324,18 @@ export default function PantryTab() {
       )}
       {pantry.items.length > 0 && (
         <T variant="small" style={{ marginTop: Spacing.md }}>
-          {"Shared by everyone in your community. Use − and + to update amounts; going to 0 removes the item. Things that are hard to measure, like salt, spices, oils and sauces, just show as in stock unless you add an amount (e.g. \"2 tbsp olive oil\")."}
+          {"Shared by everyone in this home. Use − and + to update amounts; going to 0 removes the item. Things that are hard to measure, like salt, spices, oils and sauces, just show as in stock unless you add an amount (e.g. \"2 tbsp olive oil\")."}
         </T>
       )}
     </Screen>
+  );
+}
+
+export default function PantryTab() {
+  return (
+    <GroupGate title="Pantry" needsHome>
+      <PantryList />
+    </GroupGate>
   );
 }
 
