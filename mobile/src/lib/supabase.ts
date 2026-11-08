@@ -39,6 +39,13 @@ export function photoUrl(path: string | null | undefined): string | null {
   return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+export const AVATAR_BUCKET = 'avatars';
+
+export function avatarUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
 /** Turn a Supabase/Postgres error into a sentence a person can act on. */
 export function friendlyError(e: unknown): string {
   if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {

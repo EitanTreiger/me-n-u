@@ -1,8 +1,11 @@
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
+import { removeAvatar, uploadAvatar } from '@/lib/api';
+import { avatarUrl, friendlyError } from '@/lib/supabase';
 import { makeStyles, useAppearance, useColors, type AppearancePreference } from '@/providers/appearance';
 import { useAuth } from '@/providers/auth';
 
@@ -29,14 +32,14 @@ function useLogoTint() {
 }
 
 /**
- * The signed-in user's profile picture: their Google photo when they signed in
- * with Google, otherwise the first letter of their name on sage.
+ * The signed-in user's profile picture: the one they uploaded, else their
+ * Google photo, else the first letter of their name on sage.
  */
 export function Avatar({ size = 36 }: { size?: number }) {
   const styles = useStyles();
-  const { session, displayName } = useAuth();
+  const { session, displayName, avatarPath } = useAuth();
   const meta = session?.user.user_metadata ?? {};
-  const photo: string | undefined = meta.avatar_url ?? meta.picture;
+  const photo: string | undefined = avatarUrl(avatarPath) ?? meta.avatar_url ?? meta.picture;
   const initial = (displayName || session?.user.email || '?').trim().slice(0, 1).toUpperCase();
   const circle = { width: size, height: size, borderRadius: size / 2 };
   if (photo) {
@@ -71,9 +74,46 @@ export function Wordmark({ height = 40 }: { height?: number }) {
 export function SettingsLogo({ compact = false }: { compact?: boolean }) {
   const Colors = useColors();
   const styles = useStyles();
-  const { session, displayName, signOut } = useAuth();
+  const { session, displayName, avatarPath, refreshProfile, signOut } = useAuth();
   const { preference, setPreference } = useAppearance();
   const [open, setOpen] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const userId = session?.user.id;
+
+  // Pick a picture, crop it square, and make it the profile picture.
+  async function changePhoto() {
+    if (!userId) return;
+    setPhotoError(null);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return setPhotoError('Allow photo access to choose a profile picture.');
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset) return;
+    setPhotoBusy(true);
+    try {
+      await uploadAvatar(userId, asset.uri, asset.mimeType ?? 'image/jpeg', avatarPath);
+      await refreshProfile();
+    } catch (e) {
+      setPhotoError(friendlyError(e));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function deletePhoto() {
+    if (!userId || !avatarPath) return;
+    setPhotoError(null);
+    setPhotoBusy(true);
+    try {
+      await removeAvatar(userId, avatarPath);
+      await refreshProfile();
+    } catch (e) {
+      setPhotoError(friendlyError(e));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   return (
     <>
@@ -98,7 +138,22 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
             <View style={styles.account}>
               <T variant="label">Settings</T>
               <View style={styles.accountRow}>
-                <Avatar size={40} />
+                {/* Tap the picture to change it. */}
+                <Pressable
+                  onPress={changePhoto}
+                  disabled={photoBusy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change profile picture"
+                  style={({ pressed }) => pressed && { opacity: 0.7 }}>
+                  <Avatar size={48} />
+                  <View style={styles.cameraBadge}>
+                    {photoBusy ? (
+                      <ActivityIndicator size="small" color={Colors.onPrimary} />
+                    ) : (
+                      <Icon name="camera" size={12} color={Colors.onPrimary} />
+                    )}
+                  </View>
+                </Pressable>
                 <View style={{ flex: 1, gap: 2 }}>
                   <T variant="subheading" numberOfLines={1}>
                     {displayName || 'Signed in'}
@@ -108,8 +163,27 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                       {session.user.email}
                     </T>
                   )}
+                  <View style={styles.photoLinks}>
+                    <Pressable onPress={changePhoto} disabled={photoBusy} accessibilityRole="button" hitSlop={4}>
+                      <T variant="small" style={styles.photoLink}>
+                        {avatarPath ? 'Change photo' : 'Add photo'}
+                      </T>
+                    </Pressable>
+                    {!!avatarPath && (
+                      <Pressable onPress={deletePhoto} disabled={photoBusy} accessibilityRole="button" hitSlop={4}>
+                        <T variant="small" style={[styles.photoLink, { color: Colors.danger }]}>
+                          Remove
+                        </T>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               </View>
+              {photoError && (
+                <T variant="small" style={{ color: Colors.danger }}>
+                  {photoError}
+                </T>
+              )}
             </View>
             <Divider />
             <View style={styles.appearance}>
@@ -199,6 +273,21 @@ const useStyles = makeStyles((Colors) => ({
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   avatar: { backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarText: { color: Colors.onPrimary, fontWeight: '700' },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoLinks: { flexDirection: 'row', gap: Spacing.md, marginTop: 2 },
+  photoLink: { color: Colors.primaryStrong, fontWeight: '600' },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

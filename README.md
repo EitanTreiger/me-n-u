@@ -29,6 +29,7 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
 2. In **SQL Editor**, paste and run each file in [`supabase/migrations/`](supabase/migrations) in order, oldest first:
    - [`20261107000000_init.sql`](supabase/migrations/20261107000000_init.sql) creates the tables, row‑level security, the `recipe-photos` storage bucket and realtime.
    - [`20261107020000_menu_servings.sql`](supabase/migrations/20261107020000_menu_servings.sql) lets each planned meal store how many people it's for.
+   - …and the rest in date order. [`20261107070000_profile_avatars.sql`](supabase/migrations/20261107070000_profile_avatars.sql) adds uploaded profile pictures (the `avatars` bucket).
 3. For quick testing, go to **Authentication → Providers → Email** and turn off **Confirm email** so new accounts can sign in right away.
 
 ### 2. Recipe converter (photo / YouTube → text)

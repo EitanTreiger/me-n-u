@@ -1,6 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
-import { PHOTO_BUCKET, supabase } from './supabase';
+import { AVATAR_BUCKET, PHOTO_BUCKET, supabase } from './supabase';
 import { fromISODate, weekStart } from './week';
 import { fetchVideoText } from './youtube';
 import type { ConvertedRecipe, Ingredient, Meal, MenuItem, Recipe, RecipeSource, RecipeStats, RecipeWithStats } from './types';
@@ -112,6 +112,26 @@ export async function uploadPhoto(groupId: string, uri: string, mimeType = 'imag
   const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, body, { contentType: mimeType });
   if (error) throw error;
   return path;
+}
+
+/** Upload a new profile picture for the signed-in user and replace the old one. */
+export async function uploadAvatar(userId: string, uri: string, mimeType = 'image/jpeg', previous?: string | null): Promise<string> {
+  const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
+  // A new name each time so phones and browsers don't show a cached old picture.
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const body = await fetch(uri).then((r) => r.arrayBuffer());
+  const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(path, body, { contentType: mimeType });
+  if (error) throw error;
+  const { error: saveError } = await supabase.from('profiles').update({ avatar_path: path }).eq('id', userId);
+  if (saveError) throw saveError;
+  if (previous) await supabase.storage.from(AVATAR_BUCKET).remove([previous]);
+  return path;
+}
+
+export async function removeAvatar(userId: string, path: string) {
+  const { error } = await supabase.from('profiles').update({ avatar_path: null }).eq('id', userId);
+  if (error) throw error;
+  await supabase.storage.from(AVATAR_BUCKET).remove([path]);
 }
 
 async function callConverter<T>(body: object): Promise<T> {

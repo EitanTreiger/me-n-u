@@ -7,22 +7,29 @@ type AuthState = {
   session: Session | null;
   loading: boolean;
   displayName: string;
+  /** Storage path of the picture the user uploaded, if any. */
+  avatarPath: string | null;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-async function fetchDisplayName(userId: string | undefined): Promise<string> {
-  if (!userId) return '';
-  const { data } = await supabase.from('profiles').select('display_name').eq('id', userId).maybeSingle();
-  return data?.display_name ?? '';
+type Profile = { displayName: string; avatarPath: string | null };
+
+async function fetchProfile(userId: string | undefined): Promise<Profile> {
+  if (!userId) return { displayName: '', avatarPath: null };
+  const { data, error } = await supabase.from('profiles').select('display_name, avatar_path').eq('id', userId).maybeSingle();
+  if (!error) return { displayName: data?.display_name ?? '', avatarPath: data?.avatar_path ?? null };
+  // Before the profile-avatars migration has run there is no avatar_path column.
+  const { data: nameOnly } = await supabase.from('profiles').select('display_name').eq('id', userId).maybeSingle();
+  return { displayName: nameOnly?.display_name ?? '', avatarPath: null };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState('');
+  const [profile, setProfile] = useState<Profile>({ displayName: '', avatarPath: null });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -36,13 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id;
 
   const refreshProfile = async () => {
-    setDisplayName(await fetchDisplayName(userId));
+    setProfile(await fetchProfile(userId));
   };
 
   useEffect(() => {
     let alive = true;
-    fetchDisplayName(userId).then((name) => {
-      if (alive) setDisplayName(name);
+    fetchProfile(userId).then((p) => {
+      if (alive) setProfile(p);
     });
     return () => {
       alive = false;
@@ -54,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         session,
         loading,
-        displayName,
+        displayName: profile.displayName,
+        avatarPath: profile.avatarPath,
         refreshProfile,
         signOut: async () => {
           await supabase.auth.signOut();
