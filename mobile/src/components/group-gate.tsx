@@ -26,7 +26,7 @@ export function GroupGate({ title, children }: { title: string; children: ReactN
 /**
  * First step after signing in: choose to join an existing home (picked from
  * the list, as a member) or create one (you name it and become its admin;
- * creating a home is the only way to be an admin). Join links skip this.
+ * creating a home is the only way to be an admin).
  */
 export function HomeSetup({ title }: { title: string }) {
   const Colors = useColors();

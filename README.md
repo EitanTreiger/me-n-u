@@ -2,7 +2,7 @@
 
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
 
-- **Homes.** Each home has its own weekly menu, grocery list, pantry and admin. When you first sign in you choose: join a home (pick it from the list of homes, as a member) or create one (you name it and become its admin). Only a home's creator is its admin. Join links (`/join/<code>`) still work. You can belong to several homes and switch between them in Settings (bottom left). Menu votes count for one home and only its admin sees them. Recipes, star ratings and photos (including each recipe's gallery) are shared by every home.
+- **Homes.** Each home has its own weekly menu, grocery list, pantry and admin. When you first sign in you choose: join a home (pick it from the list of homes, as a member) or create one (you name it and become its admin). Only a home's creator is its admin. You can belong to several homes and switch between them in Settings (bottom left). Menu votes count for one home and only its admin sees them. Recipes, star ratings and photos (including each recipe's gallery) are shared by every home.
 - **Recipes with photos and video.** Type a recipe, **snap a photo** of a recipe card or cookbook page, or **paste a YouTube link**. Gemini converts the photo or video (it watches the video itself, so captions aren't needed) into an editable, structured recipe.
 - **Pantry and "what's missing".** Each person keeps a pantry list. Every recipe shows what you have and what you still need to buy.
 - **Ratings and consensus ranking.** Everyone rates recipes 1–5 stars. The **Top rated** list uses a Bayesian average, so one 5‑star vote can't outrank twenty 4.6s.
@@ -68,7 +68,7 @@ mobile/src/app/            screens (Expo Router)
   (tabs)/menu.tsx          weekly menu planner
   (tabs)/groceries.tsx     weekly grocery list
   (tabs)/pantry.tsx        my pantry
-  (tabs)/groups.tsx        groups, invite codes, members and roles
+  (tabs)/groups.tsx        Homes tab: your homes, join or create a home, who's in it
   recipe/[id].tsx          recipe detail, rating, have/need ingredients
   recipe/new.tsx           add recipe: type, photo or YouTube
   menu-pick.tsx            admin: put a recipe on the menu

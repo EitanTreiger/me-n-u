@@ -7,13 +7,6 @@ import type { Home, Role } from '@/lib/types';
 import { useAuth } from './auth';
 
 const ACTIVE_HOME_KEY = 'activeHomeId';
-// A home code from a join link, kept until the person has signed in.
-const PENDING_JOIN_KEY = 'pendingJoinCode';
-
-/** Remember a join link's code so it's used as soon as the person is signed in. */
-export function rememberJoinCode(code: string) {
-  return AsyncStorage.setItem(PENDING_JOIN_KEY, code.trim().toUpperCase()).catch(() => {});
-}
 
 type GroupsState = {
   /** Every home the user belongs to, with their role in each. */
@@ -27,8 +20,6 @@ type GroupsState = {
   refresh: () => Promise<void>;
   /** Create a home; the creator becomes its admin (the only way to be one). */
   createHome: (name: string) => Promise<string>;
-  /** Join a home as a member with its code (join links). */
-  joinHome: (code: string) => Promise<string>;
   /** Join a home picked from the list, as a member. */
   joinHomeById: (homeId: string) => Promise<string>;
   leaveHome: (homeId: string) => Promise<void>;
@@ -40,7 +31,7 @@ async function fetchHomes(userId: string | undefined): Promise<{ rows: Home[]; s
   if (!userId) return { rows: [], stored: null };
   const { data, error } = await supabase
     .from('home_members')
-    .select('role, homes(id, name, invite_code, created_at)')
+    .select('role, homes(id, name, created_at)')
     .eq('user_id', userId)
     .order('joined_at', { ascending: true });
   if (error || !data) return null;
@@ -94,29 +85,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(ACTIVE_HOME_KEY, homeId).catch(() => {});
   }, []);
 
-  const joinHome = useCallback(
-    async (code: string) => {
-      const { data: homeId, error } = await supabase.rpc('join_home', { code: code.trim().toUpperCase() });
-      if (error) throw error;
-      await refresh();
-      setActiveHome(homeId as string);
-      return homeId as string;
-    },
-    [refresh, setActiveHome],
-  );
-
-  // Opened a join link before signing in: join once signed in.
-  useEffect(() => {
-    if (!userId || loadedFor !== userId) return;
-    AsyncStorage.getItem(PENDING_JOIN_KEY)
-      .then(async (code) => {
-        if (!code) return;
-        await AsyncStorage.removeItem(PENDING_JOIN_KEY);
-        await joinHome(code);
-      })
-      .catch(() => {});
-  }, [userId, loadedFor, joinHome]);
-
   const value = useMemo<GroupsState>(() => {
     const activeHome = homes.find((h) => h.id === activeId) ?? null;
     return {
@@ -137,7 +105,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         setActiveHome(homeId as string);
         return homeId as string;
       },
-      joinHome,
       joinHomeById: async (homeId) => {
         const { error } = await supabase.rpc('join_home_by_id', { hid: homeId });
         if (error) throw error;
@@ -152,7 +119,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     };
-  }, [homes, activeId, loading, loadedFor, setActiveHome, refresh, joinHome, userId]);
+  }, [homes, activeId, loading, loadedFor, setActiveHome, refresh, userId]);
 
   return <GroupsContext.Provider value={value}>{children}</GroupsContext.Provider>;
 }

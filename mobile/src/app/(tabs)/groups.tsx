@@ -8,9 +8,7 @@ import { Button, Card, Chip, Divider, ErrorBanner, Field, Icon, SectionHeader, T
 import { Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
 import { listMembers, type Member } from '@/lib/api';
-import { joinLink, shareInvite } from '@/lib/join-link';
 import { friendlyError } from '@/lib/supabase';
-import type { Home } from '@/lib/types';
 import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 
@@ -63,16 +61,6 @@ export default function HomesTab() {
     }
   }
 
-  async function share(home: Home) {
-    setError(null);
-    try {
-      const result = await shareInvite(home.name, home.invite_code);
-      setNotice(result === 'copied' ? `Join link for ${home.name} copied: ${joinLink(home.invite_code)}` : null);
-    } catch (e) {
-      setError(friendlyError(e));
-    }
-  }
-
   return (
     <Screen title="Homes" subtitle={`Signed in as ${displayName || session?.user.email}`}>
       {homes.length > 0 && (
@@ -99,19 +87,6 @@ export default function HomesTab() {
                     </View>
                     {viewing ? <Chip label="Viewing" selected /> : <T variant="small">View</T>}
                   </Pressable>
-                  {/* A home's code is only shown to its own admins. */}
-                  {admin && (
-                    <>
-                      <Divider />
-                      <View style={styles.inviteRow}>
-                        <View style={{ flex: 1, gap: 2 }}>
-                          <T variant="label">Home code</T>
-                          <T style={styles.code}>{h.invite_code}</T>
-                        </View>
-                        <Button title="Share link" icon="share-outline" variant="secondary" compact onPress={() => share(h)} />
-                      </View>
-                    </>
-                  )}
                 </Card>
               );
             })}
@@ -191,11 +166,11 @@ export default function HomesTab() {
       {panel === 'create' && (
         <Card style={styles.panel}>
           <Field label="Home name (required)" value={homeName} onChangeText={setHomeName} placeholder="e.g. Oak Avenue Home" maxLength={80} />
-          <T variant="small">{"You'll be its admin (only a home's creator is). People can then pick it from the list, or use its link."}</T>
+          <T variant="small">{"You'll be its admin (only a home's creator is). People join by picking it from the list."}</T>
           <Button
             title="Create home"
             icon="add"
-            onPress={() => run(() => groups.createHome(homeName), `Created ${homeName.trim()}. Share its code or link so people can join.`)}
+            onPress={() => run(() => groups.createHome(homeName), `Created ${homeName.trim()}. People can now pick it from the list to join.`)}
             loading={busy}
           />
         </Card>
@@ -220,8 +195,6 @@ const useStyles = makeStyles((Colors) => ({
   homeCard: { gap: Spacing.md },
   homeCardActive: { borderColor: Colors.primary, borderWidth: 2 },
   homeHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  inviteRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  code: { fontSize: 22, fontWeight: '700', letterSpacing: 4, fontFamily: 'monospace' },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
   avatar: {
     width: 32,

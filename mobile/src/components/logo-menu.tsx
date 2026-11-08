@@ -20,7 +20,7 @@ const NOTIFY_KEY = 'notificationsOn';
 
 const HELP = [
   'Homes: each home has its own menu, grocery list and pantry. Switch homes above.',
-  'Join another home by picking it from the list on the Homes tab, or with its link.',
+  'Join another home by picking it from the list on the Homes tab.',
   "Only the person who creates a home is its admin: they plan its menu and see its menu votes.",
   'Recipes, ratings and gallery photos are shared by every home.',
 ];
@@ -73,16 +73,38 @@ export function Wordmark({ height = 40 }: { height?: number }) {
 }
 
 /**
- * Bottom-left profile picture under the tabs: opens the Settings menu (account and
- * Sign out). On phones `compact` keeps it small enough to sit in the tab bar.
+ * Profile picture and name at the bottom of the sidebar (computers) and on the
+ * welcome screen: opens the Settings menu. Phones open it from the Profile tab.
  */
-export function SettingsLogo({ compact = false }: { compact?: boolean }) {
+export function SettingsLogo() {
+  const styles = useStyles();
+  const { session, displayName } = useAuth();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        hitSlop={6}
+        style={({ pressed }) => [styles.button, pressed && { opacity: 0.7 }]}>
+        <Avatar size={36} />
+        <T variant="small" numberOfLines={1} style={styles.name}>
+          {displayName || session?.user.email}
+        </T>
+      </Pressable>
+      <SettingsMenu open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+/** The Settings menu: account, homes, appearance, name, notifications, help, sign out. */
+export function SettingsMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const Colors = useColors();
   const styles = useStyles();
   const { session, displayName, avatarPath, refreshProfile, signOut } = useAuth();
   const { homes, activeHome, setActiveHome } = useGroups();
   const { preference, setPreference } = useAppearance();
-  const [open, setOpen] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const userId = session?.user.id;
@@ -164,23 +186,9 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
 
   return (
     <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        hitSlop={6}
-        style={({ pressed }) => [styles.button, compact && styles.buttonCompact, pressed && { opacity: 0.7 }]}>
-        <Avatar size={compact ? 30 : 36} />
-        {!compact && (
-          <T variant="small" numberOfLines={1} style={styles.name}>
-            {displayName || session?.user.email}
-          </T>
-        )}
-      </Pressable>
-
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
         {/* Tap anywhere outside the menu to close it. */}
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close settings">
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close settings">
           <View style={styles.menu} onStartShouldSetResponder={() => true}>
             <ScrollView>
             <View style={styles.account}>
@@ -248,7 +256,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                         key={h.id}
                         onPress={() => {
                           setActiveHome(h.id);
-                          setOpen(false);
+                          onClose();
                         }}
                         accessibilityRole="radio"
                         accessibilityState={{ selected }}
@@ -339,7 +347,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
             <Divider />
             <Pressable
               onPress={() => {
-                setOpen(false);
+                onClose();
                 signOut();
               }}
               accessibilityRole="button"
@@ -399,7 +407,6 @@ const useStyles = makeStyles((Colors) => ({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  buttonCompact: { paddingHorizontal: Spacing.md, paddingVertical: 0, justifyContent: 'center' },
   name: { flex: 1, color: Colors.text, fontWeight: '600' },
   backdrop: { flex: 1, backgroundColor: Colors.backdrop },
   // Opens from the bottom-left corner, above the logo.
