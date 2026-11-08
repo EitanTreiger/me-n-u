@@ -1,23 +1,28 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
-import { removeAvatar, uploadAvatar } from '@/lib/api';
+import { removeAvatar, updateDisplayName, uploadAvatar } from '@/lib/api';
 import { avatarUrl, friendlyError } from '@/lib/supabase';
 import { makeStyles, useAppearance, useColors, type AppearancePreference } from '@/providers/appearance';
 import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 
-import { Divider, Icon, T, type IconName } from './ui';
+import { Button, Divider, Field, Icon, T, type IconName } from './ui';
 
 const WORDMARK = require('@/assets/images/logo-wordmark.png');
 
-const SETTINGS_OPTIONS: { label: string; icon: IconName; value: string }[] = [
-  { label: 'Change name', icon: 'person-outline', value: '' },
-  { label: 'Notifications', icon: 'notifications-outline', value: 'On' },
-  { label: 'Help & feedback', icon: 'help-circle-outline', value: '' },
+// Whether this device should show me-n-u alerts (pantry changes and the like).
+const NOTIFY_KEY = 'notificationsOn';
+
+const HELP = [
+  'Homes: each home has its own menu, grocery list and pantry. Switch homes above.',
+  "Join another home with its code or link on the Homes tab. Admins find their home's link there.",
+  'Admins plan the weekly menu and see menu votes for their own home only.',
+  'Recipes, ratings and gallery photos are shared by every home.',
 ];
 
 const APPEARANCE_OPTIONS: { label: string; value: AppearancePreference }[] = [
@@ -81,6 +86,47 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const userId = session?.user.id;
+  // Which settings row is opened up: change name, or help.
+  const [expanded, setExpanded] = useState<'name' | 'help' | null>(null);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [notify, setNotify] = useState(true);
+
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIFY_KEY)
+      .then((v) => {
+        if (v !== null) setNotify(v === 'on');
+      })
+      .catch(() => {});
+  }, []);
+
+  function toggleNotify() {
+    const next = !notify;
+    setNotify(next);
+    AsyncStorage.setItem(NOTIFY_KEY, next ? 'on' : 'off').catch(() => {});
+  }
+
+  function toggleExpanded(row: 'name' | 'help') {
+    setNameError(null);
+    if (row === 'name') setNameDraft(displayName);
+    setExpanded((current) => (current === row ? null : row));
+  }
+
+  async function saveName() {
+    if (!userId) return;
+    setNameBusy(true);
+    setNameError(null);
+    try {
+      await updateDisplayName(userId, nameDraft);
+      await refreshProfile();
+      setExpanded(null);
+    } catch (e) {
+      setNameError(friendlyError(e));
+    } finally {
+      setNameBusy(false);
+    }
+  }
 
   // Pick a picture, crop it square, and make it the profile picture.
   async function changePhoto() {
@@ -136,6 +182,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
         {/* Tap anywhere outside the menu to close it. */}
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close settings">
           <View style={styles.menu} onStartShouldSetResponder={() => true}>
+            <ScrollView>
             <View style={styles.account}>
               <T variant="label">Settings</T>
               <View style={styles.accountRow}>
@@ -194,7 +241,6 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                   <T variant="label" style={styles.homesLabel}>
                     Your homes
                   </T>
-                  <ScrollView style={styles.homesList}>
                   {homes.map((h) => {
                     const selected = h.id === activeHome?.id;
                     return (
@@ -223,7 +269,6 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                       </Pressable>
                     );
                   })}
-                  </ScrollView>
                 </View>
               </>
             )}
@@ -251,20 +296,46 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                 })}
               </View>
             </View>
-            {/* Placeholders for now: they show the option but don't do anything yet. */}
-            {SETTINGS_OPTIONS.map((o) => (
-              <Pressable
-                key={o.label}
-                accessibilityRole="button"
-                accessibilityHint="Coming soon"
-                style={({ pressed }) => [styles.item, pressed && { backgroundColor: Colors.primarySoft }]}>
-                <Icon name={o.icon} size={18} color={Colors.textSecondary} />
-                <T style={{ flex: 1 }}>{o.label}</T>
-                <T variant="small" style={{ color: Colors.textMuted }}>
-                  {o.value}
-                </T>
-              </Pressable>
-            ))}
+            <SettingsRow
+              icon="person-outline"
+              label="Change name"
+              expanded={expanded === 'name'}
+              onPress={() => toggleExpanded('name')}
+            />
+            {expanded === 'name' && (
+              <View style={styles.expanded}>
+                <Field value={nameDraft} onChangeText={setNameDraft} placeholder="Your name" autoComplete="name" onSubmitEditing={saveName} maxLength={60} />
+                {nameError && (
+                  <T variant="small" style={{ color: Colors.danger }}>
+                    {nameError}
+                  </T>
+                )}
+                <Button title="Save name" compact onPress={saveName} loading={nameBusy} disabled={!nameDraft.trim() || nameDraft.trim() === displayName} />
+              </View>
+            )}
+            <SettingsRow icon="notifications-outline" label="Notifications" value={notify ? 'On' : 'Off'} onPress={toggleNotify} />
+            <SettingsRow
+              icon="help-circle-outline"
+              label="Help & feedback"
+              expanded={expanded === 'help'}
+              onPress={() => toggleExpanded('help')}
+            />
+            {expanded === 'help' && (
+              <View style={styles.expanded}>
+                {HELP.map((line) => (
+                  <T key={line} variant="small">
+                    {`• ${line}`}
+                  </T>
+                ))}
+                <Button
+                  title="Send feedback"
+                  icon="mail-outline"
+                  variant="secondary"
+                  compact
+                  onPress={() => Linking.openURL('mailto:?subject=me-n-u%20feedback').catch(() => {})}
+                />
+              </View>
+            )}
             <Divider />
             <Pressable
               onPress={() => {
@@ -276,6 +347,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
               <Icon name="log-out-outline" size={18} color={Colors.danger} />
               <T style={{ color: Colors.danger, fontWeight: '600' }}>Sign out</T>
             </Pressable>
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
@@ -283,7 +355,43 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** One row in the Settings menu: icon, label, and a value or an open/closed chevron. */
+function SettingsRow({
+  icon,
+  label,
+  value,
+  expanded,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  value?: string;
+  expanded?: boolean;
+  onPress: () => void;
+}) {
+  const Colors = useColors();
+  const styles = useStyles();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={expanded === undefined ? undefined : { expanded }}
+      style={({ pressed }) => [styles.item, pressed && { backgroundColor: Colors.primarySoft }]}>
+      <Icon name={icon} size={18} color={Colors.textSecondary} />
+      <T style={{ flex: 1 }}>{label}</T>
+      {value !== undefined ? (
+        <T variant="small" style={{ color: Colors.textMuted }}>
+          {value}
+        </T>
+      ) : (
+        <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textMuted} />
+      )}
+    </Pressable>
+  );
+}
+
 const useStyles = makeStyles((Colors) => ({
+  expanded: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.sm },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -300,6 +408,8 @@ const useStyles = makeStyles((Colors) => ({
     bottom: 80,
     left: 16,
     width: 260,
+    // Long menus (many homes, open sections) scroll instead of running off the top.
+    maxHeight: '85%',
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1,
@@ -340,7 +450,6 @@ const useStyles = makeStyles((Colors) => ({
   },
   homes: { paddingVertical: Spacing.xs },
   homesLabel: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
-  homesList: { maxHeight: 180 },
   homeItem: { paddingVertical: Spacing.sm },
   appearance: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
   appearanceLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },

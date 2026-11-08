@@ -125,7 +125,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       setActiveHome,
       refresh,
       createHome: async (name) => {
-        const { data: homeId, error } = await supabase.rpc('create_home', { home_name: name.trim() });
+        // Every home needs a name: it's how people tell their homes apart.
+        const trimmed = name.trim();
+        if (trimmed.length < 2) throw new Error('Give your home a name first (e.g. "Maple Street Home").');
+        if (trimmed.length > 80) throw new Error('Keep the home name under 80 characters.');
+        const { data: homeId, error } = await supabase.rpc('create_home', { home_name: trimmed });
         if (error) throw error;
         await refresh();
         setActiveHome(homeId as string);

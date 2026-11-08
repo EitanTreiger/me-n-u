@@ -129,6 +129,15 @@ export async function uploadPhoto(uri: string, mimeType = 'image/jpeg'): Promise
   return path;
 }
 
+/** Change the name everyone sees on your recipes, photos and in your homes. */
+export async function updateDisplayName(userId: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Enter a name.');
+  if (trimmed.length > 60) throw new Error('Keep your name under 60 characters.');
+  const { error } = await supabase.from('profiles').update({ display_name: trimmed }).eq('id', userId);
+  if (error) throw error;
+}
+
 /** Upload a new profile picture for the signed-in user and replace the old one. */
 export async function uploadAvatar(userId: string, uri: string, mimeType = 'image/jpeg', previous?: string | null): Promise<string> {
   const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
