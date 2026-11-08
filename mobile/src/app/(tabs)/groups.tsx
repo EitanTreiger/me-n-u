@@ -22,8 +22,6 @@ export default function GroupsTab() {
   const groups = useGroups();
   const { active, isAdmin, homes, activeHome } = groups;
   const [panel, setPanel] = useState<Panel>(groups.memberships.length ? 'none' : 'join');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [code, setCode] = useState('');
   const [homeName, setHomeName] = useState('');
   const [addingHome, setAddingHome] = useState(false);
@@ -54,8 +52,6 @@ export default function GroupsTab() {
     try {
       await fn();
       setPanel('none');
-      setName('');
-      setDescription('');
       setCode('');
     } catch (e) {
       setError(friendlyError(e));
@@ -70,6 +66,7 @@ export default function GroupsTab() {
     try {
       const home = await groups.createHome(homeName);
       setHomeName('');
+      setPanel('none');
       setNotice(`Added ${home.name}. Share its code or link so people can join it.`);
     } catch (e) {
       setError(friendlyError(e));
@@ -176,12 +173,6 @@ export default function GroupsTab() {
               );
             })}
           </View>
-          {isAdmin && (
-            <Card style={styles.panel}>
-              <Field label="Add a home" value={homeName} onChangeText={setHomeName} placeholder="e.g. Oak Avenue Home" />
-              <Button title="Add home" icon="add" onPress={addHome} loading={addingHome} disabled={!homeName.trim()} />
-            </Card>
-          )}
           {notice && (
             <T variant="small" style={{ color: Colors.success, marginTop: Spacing.sm }}>
               {notice}
@@ -248,20 +239,23 @@ export default function GroupsTab() {
         </>
       )}
 
-      <SectionHeader title={groups.memberships.length ? 'Join or start another' : 'Get started'} />
+      {/* Homes are the only thing created in the app, and only admins can create them. */}
+      <SectionHeader title={isAdmin ? 'Add or join a home' : 'Join another home'} />
       <View style={styles.actions}>
+        {isAdmin && (
+          <Button
+            title="Create home"
+            icon="add"
+            variant={panel === 'create' ? 'primary' : 'secondary'}
+            onPress={() => setPanel(panel === 'create' ? 'none' : 'create')}
+            style={{ flex: 1 }}
+          />
+        )}
         <Button
           title="Join a home"
           icon="enter-outline"
           variant={panel === 'join' ? 'primary' : 'secondary'}
           onPress={() => setPanel(panel === 'join' ? 'none' : 'join')}
-          style={{ flex: 1 }}
-        />
-        <Button
-          title="New community"
-          icon="add"
-          variant={panel === 'create' ? 'primary' : 'secondary'}
-          onPress={() => setPanel(panel === 'create' ? 'none' : 'create')}
           style={{ flex: 1 }}
         />
       </View>
@@ -282,12 +276,11 @@ export default function GroupsTab() {
         </Card>
       )}
 
-      {panel === 'create' && (
+      {panel === 'create' && isAdmin && active && (
         <Card style={styles.panel}>
-          <Field label="Community name" value={name} onChangeText={setName} placeholder="e.g. Thresholds" />
-          <Field label="Description (optional)" value={description} onChangeText={setDescription} placeholder="Who's in this community?" />
-          <T variant="small">{"You'll be the admin. It starts with one home of the same name; add more homes and share each home's link."}</T>
-          <Button title="Create community" onPress={() => run(() => groups.createGroup(name, description))} loading={busy} disabled={!name.trim()} />
+          <Field label="Home name" value={homeName} onChangeText={setHomeName} placeholder="e.g. Oak Avenue Home" />
+          <T variant="small">{`The home is added to ${active.name}. Share its code or link so the people who live there can join.`}</T>
+          <Button title="Create home" icon="add" onPress={addHome} loading={addingHome} disabled={!homeName.trim()} />
         </Card>
       )}
 

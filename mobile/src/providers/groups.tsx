@@ -32,7 +32,6 @@ type GroupsState = {
   setActive: (groupId: string) => void;
   setActiveHome: (homeId: string) => void;
   refresh: () => Promise<void>;
-  createGroup: (name: string, description: string) => Promise<Group>;
   createHome: (name: string) => Promise<Home>;
   /** Join a home (and its community) with the home's code. */
   joinHome: (code: string) => Promise<string>;
@@ -218,17 +217,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       refresh: async () => {
         await refresh();
         if (activeId) await loadHomes(activeId);
-      },
-      createGroup: async (name, description) => {
-        const { data, error } = await supabase
-          .from('groups')
-          .insert({ name: name.trim(), description: description.trim() })
-          .select()
-          .single();
-        if (error) throw error;
-        await refresh();
-        setActive(data.id);
-        return data as Group;
       },
       createHome: async (name) => {
         if (!activeId) throw new Error('Pick a community first.');
