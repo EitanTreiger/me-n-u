@@ -36,6 +36,8 @@ export const PHOTO_BUCKET = 'recipe-photos';
 
 export function photoUrl(path: string | null | undefined): string | null {
   if (!path) return null;
+  // A full web address (e.g. a Wikimedia Commons photo) is used as-is.
+  if (/^https?:\/\//.test(path)) return path;
   return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 

@@ -369,5 +369,6 @@ export async function addGalleryPhoto(recipeId: string, uri: string, mimeType = 
 export async function deleteGalleryPhoto(photo: GalleryPhoto) {
   const { error } = await supabase.from('recipe_gallery').delete().eq('id', photo.id);
   if (error) throw error;
-  await supabase.storage.from(PHOTO_BUCKET).remove([photo.photo_path]);
+  // Only uploaded photos have a file to remove (web links don't).
+  if (!/^https?:\/\//.test(photo.photo_path)) await supabase.storage.from(PHOTO_BUCKET).remove([photo.photo_path]);
 }
