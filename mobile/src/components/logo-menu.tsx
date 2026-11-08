@@ -8,7 +8,6 @@ import { useAuth } from '@/providers/auth';
 
 import { Divider, Icon, T, type IconName } from './ui';
 
-const LOGO = require('@/assets/images/logo-mark.png');
 const WORDMARK = require('@/assets/images/logo-wordmark.png');
 
 const SETTINGS_OPTIONS: { label: string; icon: IconName; value: string }[] = [
@@ -29,11 +28,24 @@ function useLogoTint() {
   return scheme === 'dark' ? colors.primaryStrong : undefined;
 }
 
-/** The me-n-u logo on its own (the settings button). */
-export function Logo({ size = 40 }: { size?: number }) {
-  const tint = useLogoTint();
+/**
+ * The signed-in user's profile picture: their Google photo when they signed in
+ * with Google, otherwise the first letter of their name on sage.
+ */
+export function Avatar({ size = 36 }: { size?: number }) {
+  const styles = useStyles();
+  const { session, displayName } = useAuth();
+  const meta = session?.user.user_metadata ?? {};
+  const photo: string | undefined = meta.avatar_url ?? meta.picture;
+  const initial = (displayName || session?.user.email || '?').trim().slice(0, 1).toUpperCase();
+  const circle = { width: size, height: size, borderRadius: size / 2 };
+  if (photo) {
+    return <Image source={{ uri: photo }} style={[styles.avatar, circle]} contentFit="cover" accessibilityLabel="Your profile picture" />;
+  }
   return (
-    <Image source={LOGO} style={{ width: size, height: size }} tintColor={tint} contentFit="contain" accessibilityLabel="me-n-u" />
+    <View style={[styles.avatar, circle]} accessibilityLabel="Your profile picture">
+      <T style={[styles.avatarText, { fontSize: size * 0.42 }]}>{initial}</T>
+    </View>
   );
 }
 
@@ -53,7 +65,7 @@ export function Wordmark({ height = 40 }: { height?: number }) {
 }
 
 /**
- * Bottom-left logo under the tabs: opens the Settings menu (account and
+ * Bottom-left profile picture under the tabs: opens the Settings menu (account and
  * Sign out). On phones `compact` keeps it small enough to sit in the tab bar.
  */
 export function SettingsLogo({ compact = false }: { compact?: boolean }) {
@@ -71,7 +83,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
         accessibilityLabel="Settings"
         hitSlop={6}
         style={({ pressed }) => [styles.button, compact && styles.buttonCompact, pressed && { opacity: 0.7 }]}>
-        <Logo size={compact ? 30 : 36} />
+        <Avatar size={compact ? 30 : 36} />
         {!compact && (
           <T variant="small" numberOfLines={1} style={styles.name}>
             {displayName || session?.user.email}
@@ -85,14 +97,19 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
           <View style={styles.menu} onStartShouldSetResponder={() => true}>
             <View style={styles.account}>
               <T variant="label">Settings</T>
-              <T variant="subheading" numberOfLines={1}>
-                {displayName || 'Signed in'}
-              </T>
-              {!!session?.user.email && (
-                <T variant="small" numberOfLines={1}>
-                  {session.user.email}
-                </T>
-              )}
+              <View style={styles.accountRow}>
+                <Avatar size={40} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T variant="subheading" numberOfLines={1}>
+                    {displayName || 'Signed in'}
+                  </T>
+                  {!!session?.user.email && (
+                    <T variant="small" numberOfLines={1}>
+                      {session.user.email}
+                    </T>
+                  )}
+                </View>
+              </View>
             </View>
             <Divider />
             <View style={styles.appearance}>
@@ -178,7 +195,10 @@ const useStyles = makeStyles((Colors) => ({
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  account: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: 2 },
+  account: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  avatar: { backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarText: { color: Colors.onPrimary, fontWeight: '700' },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

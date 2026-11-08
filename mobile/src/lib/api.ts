@@ -144,9 +144,22 @@ export async function attachRecipeImage(recipeId: string, title: string, descrip
   }
 }
 
-/** Read a receipt or shopping-list photo into pantry items. */
+// Receipt lines that are almost never food: store charges, payment lines and
+// household, personal-care and pet products. A safety net on top of Gemini's
+// own filtering, so a stray line doesn't land in the pantry.
+const NOT_FOOD =
+  /\b(sub ?total|total|tax|hst|gst|pst|vat|deposit|eco ?fee|env(ironmental)? fee|crf|bag|bags|coupon|discount|savings?|saved|points?|rewards?|gift ?card|change|cash|visa|mastercard|debit|credit|balance|tender|refund|receipt|loyalty|member|battery|batteries|detergent|soap|dish ?soap|shampoo|conditioner|toothpaste|toothbrush|floss|tissues?|paper towels?|toilet|napkins?|plastic wrap|trash|garbage|cleaner|bleach|disinfect\w*|sponges?|diapers?|wipes|razors?|lotion|deodorant|sunscreen|vitamins?|supplements?|medicine|ibuprofen|acetaminophen|tylenol|advil|bandages?|pet|dog food|cat food|litter|cigarettes?|tobacco|vape|lottery|magazine|candles?|lighter|charcoal|light ?bulbs?|cards?)\b/i;
+
+/** A real item name, not a code, price or store line ("4011", "#2231", "$3.99"). */
+function looksLikeFood(name: string): boolean {
+  const n = name.trim();
+  return /[a-z]{3,}/i.test(n) && !NOT_FOOD.test(n);
+}
+
+/** Read a receipt or shopping-list photo into pantry items (food only). */
 export async function readReceipt(base64: string, mediaType: string): Promise<Ingredient[]> {
-  return (await callConverter<{ items: Ingredient[] }>({ receiptBase64: base64, mediaType })).items;
+  const { items } = await callConverter<{ items: Ingredient[] }>({ receiptBase64: base64, mediaType });
+  return items.filter((i) => looksLikeFood(i.name));
 }
 
 export function convertPhoto(base64: string, mediaType: string) {
