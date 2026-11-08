@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="mobile/assets/images/logo-wordmark.png" alt="meNu logo" width="320" />
+</p>
+
 # me-n-u — Thresholds ComuniHacks
 
 A mobile app for Thresholds group homes to share recipes, plan weekly menus and shop together.
