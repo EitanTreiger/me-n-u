@@ -70,6 +70,8 @@ function RootNavigator() {
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+      {/* Public: linked from Google's sign-in consent screen. */}
+      <Stack.Screen name="privacy" options={{ title: 'Privacy policy' }} />
     </Stack>
   );
 }
