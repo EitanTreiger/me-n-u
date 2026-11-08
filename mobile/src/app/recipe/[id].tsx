@@ -239,7 +239,10 @@ export default function RecipeDetail() {
             style={{ flex: 1 }}
           />
         )}
-        <Button title="I made this" icon="checkmark-done-outline" variant="secondary" onPress={openMadeIt} style={{ flex: 1 }} />
+        {/* Admins mark a cooked recipe as completed, which takes its ingredients out of the pantry. */}
+        {isAdmin && (
+          <Button title="Completed" icon="checkmark-done-outline" variant="secondary" onPress={openMadeIt} style={{ flex: 1 }} />
+        )}
       </View>
       {isAdmin && recipe.votes > 0 && (
         <T variant="small" style={{ marginTop: Spacing.xs }}>
@@ -248,13 +251,13 @@ export default function RecipeDetail() {
       )}
       {doneMessage && <T variant="small" style={{ color: Colors.success, marginTop: Spacing.sm }}>{doneMessage}</T>}
 
-      {madeIt && (
+      {madeIt && isAdmin && (
         <Card style={styles.madeIt}>
-          <T variant="subheading">Nice! Update your pantry</T>
+          <T variant="subheading">Recipe completed: update the pantry</T>
           <T variant="small">
             {usage.length
-              ? `These are the pantry items this recipe used (for ${cookingFor}). Untick anything you didn't use.`
-              : "None of this recipe's ingredients are in your pantry, so there's nothing to update."}
+              ? `These ingredients (for ${cookingFor}) will come out of the pantry. Untick anything you didn't use. Basics like salt, spices and oils stay in stock.`
+              : "None of this recipe's ingredients are in the pantry with an amount, so there's nothing to take out. Basics like salt stay in stock."}
           </T>
           {usage.map((u, i) => (
             <Pressable
