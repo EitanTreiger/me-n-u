@@ -11,15 +11,14 @@ export type Group = {
 
 export type Membership = Group & { role: Role };
 
-/** A home inside a community: it has its own menu, groceries, pantry and invite code. */
+/** A home the user belongs to: it has its own menu, groceries, pantry, invite code and admins. */
 export type Home = {
   id: string;
-  group_id: string;
   name: string;
   invite_code: string;
   created_at: string;
-  /** user_ids of the people who joined this home */
-  members: string[];
+  /** The user's role in this home. */
+  role: Role;
 };
 
 export type Ingredient = {

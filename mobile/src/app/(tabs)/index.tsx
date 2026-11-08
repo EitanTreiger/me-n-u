@@ -36,29 +36,30 @@ const SORTS: {
 function RecipesList() {
   const Colors = useColors();
   const styles = useStyles();
-  const { active, activeHome, isAdmin } = useGroups();
+  const { activeHome, isAdmin } = useGroups();
   const { names: pantry } = usePantry();
   const [recipes, setRecipes] = useState<RecipeWithStats[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('top');
+  // Switched to a home where you're not an admin: votes aren't yours to see.
+  if (sort === 'votes' && !isAdmin) setSort('top');
   const [tags, setTags] = useState<string[]>([]);
   const { wide } = useLayout();
   const userId = useAuth().session?.user.id;
 
-  const groupId = active!.id;
-  // Ratings are community-wide; menu votes are counted for this home.
+  // Recipes and ratings are shared by every home; menu votes are this home's.
   const homeId = activeHome?.id;
 
   const load = useCallback(async () => {
     try {
-      setRecipes(await listRecipes(groupId, homeId));
+      setRecipes(await listRecipes(homeId));
       setError(null);
     } catch (e) {
       setError(friendlyError(e));
     }
-  }, [groupId, homeId]);
+  }, [homeId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -100,15 +101,7 @@ function RecipesList() {
   return (
     <Screen
       title="Recipes"
-      subtitle={
-        <Pressable onPress={() => router.navigate('/groups')} style={styles.groupPill} accessibilityRole="button">
-          <Icon name="home-outline" size={14} color={Colors.primaryStrong} />
-          <T variant="small" style={styles.groupName} numberOfLines={1}>
-            {active!.name}
-          </T>
-          <Icon name="chevron-down" size={14} color={Colors.primaryStrong} />
-        </Pressable>
-      }
+      subtitle="Shared by every home. Rate what you've made and add photos to its gallery."
       right={<Button title="Add" icon="add" compact onPress={() => router.push('/recipe/new')} />}
       refreshing={refreshing}
       onRefresh={async () => {
@@ -134,14 +127,14 @@ function RecipesList() {
       </View>
 
       <View style={styles.sortRow}>
-        {/* Most Votes: this week's menu votes at one home (admins can switch homes). */}
-        {SORTS.filter((s) => s.key !== 'votes' || activeHome).map((s) => (
+        {/* Most Votes: this week's menu votes at this home, for its admins only. */}
+        {SORTS.filter((s) => s.key !== 'votes' || isAdmin).map((s) => (
           <Chip key={s.key} label={s.label} icon={s.icon} selected={sort === s.key} onPress={() => setSort(s.key)} />
         ))}
       </View>
-      {sort === 'votes' && activeHome && (
+      {sort === 'votes' && isAdmin && (
         <View style={styles.votesFor}>
-          <T variant="small">{isAdmin ? 'Menu votes this week at' : 'Menu votes this week at your home'}</T>
+          <T variant="small">Menu votes this week at</T>
           <HomeSwitcher />
         </View>
       )}
@@ -188,6 +181,7 @@ function RecipesList() {
                 recipe={r}
                 pantry={pantry}
                 large={wide}
+                showVotes={isAdmin}
                 onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: r.id } })}
               />
             </View>
@@ -208,14 +202,6 @@ export default function RecipesTab() {
 
 const useStyles = makeStyles((Colors) => ({
   votesFor: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  groupPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingVertical: 2,
-  },
-  groupName: { color: Colors.primaryStrong, fontWeight: '600', maxWidth: 220 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

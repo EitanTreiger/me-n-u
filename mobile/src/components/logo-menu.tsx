@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { removeAvatar, uploadAvatar } from '@/lib/api';
 import { avatarUrl, friendlyError } from '@/lib/supabase';
 import { makeStyles, useAppearance, useColors, type AppearancePreference } from '@/providers/appearance';
 import { useAuth } from '@/providers/auth';
+import { useGroups } from '@/providers/groups';
 
 import { Divider, Icon, T, type IconName } from './ui';
 
@@ -74,6 +75,7 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
   const Colors = useColors();
   const styles = useStyles();
   const { session, displayName, avatarPath, refreshProfile, signOut } = useAuth();
+  const { homes, activeHome, setActiveHome } = useGroups();
   const { preference, setPreference } = useAppearance();
   const [open, setOpen] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -184,6 +186,47 @@ export function SettingsLogo({ compact = false }: { compact?: boolean }) {
                 </T>
               )}
             </View>
+            {/* Switch between the homes you belong to. */}
+            {homes.length > 0 && (
+              <>
+                <Divider />
+                <View style={styles.homes} accessibilityRole="radiogroup">
+                  <T variant="label" style={styles.homesLabel}>
+                    Your homes
+                  </T>
+                  <ScrollView style={styles.homesList}>
+                  {homes.map((h) => {
+                    const selected = h.id === activeHome?.id;
+                    return (
+                      <Pressable
+                        key={h.id}
+                        onPress={() => {
+                          setActiveHome(h.id);
+                          setOpen(false);
+                        }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        style={({ pressed }) => [styles.item, styles.homeItem, pressed && { backgroundColor: Colors.primarySoft }]}>
+                        <Icon
+                          name={selected ? 'radio-button-on' : 'radio-button-off'}
+                          size={18}
+                          color={selected ? Colors.primaryStrong : Colors.borderStrong}
+                        />
+                        <T style={{ flex: 1, fontWeight: selected ? '600' : '400' }} numberOfLines={1}>
+                          {h.name}
+                        </T>
+                        {h.role === 'admin' && (
+                          <T variant="small" style={{ color: Colors.textMuted }}>
+                            Admin
+                          </T>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                  </ScrollView>
+                </View>
+              </>
+            )}
             <Divider />
             <View style={styles.appearance}>
               <View style={styles.appearanceLabel}>
@@ -295,6 +338,10 @@ const useStyles = makeStyles((Colors) => ({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
+  homes: { paddingVertical: Spacing.xs },
+  homesLabel: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 2 },
+  homesList: { maxHeight: 180 },
+  homeItem: { paddingVertical: Spacing.sm },
   appearance: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
   appearanceLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   // System / Light / Dark segmented control.

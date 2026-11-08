@@ -50,12 +50,15 @@ export function RecipeCard({
   pantry,
   onPress,
   large = false,
+  showVotes = false,
 }: {
   recipe: RecipeWithStats;
   pantry: string[];
   onPress: () => void;
   /** Bigger photo and text, for computers. */
   large?: boolean;
+  /** This week's menu votes at the home; only that home's admins see them. */
+  showVotes?: boolean;
 }) {
   const Colors = useColors();
   const styles = useStyles();
@@ -100,7 +103,7 @@ export function RecipeCard({
               </T>
             </View>
           )}
-          {recipe.votes > 0 && (
+          {showVotes && recipe.votes > 0 && (
             <View style={styles.meta}>
               <Icon name={recipe.myVote ? 'thumbs-up' : 'thumbs-up-outline'} size={large ? 15 : 12} color={Colors.primaryStrong} />
               <T variant="small" style={[{ color: Colors.primaryStrong, fontWeight: '600' }, metaText]}>

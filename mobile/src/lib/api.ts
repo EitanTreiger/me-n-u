@@ -27,12 +27,16 @@ function withStats(recipes: Recipe[], stats: RecipeStats[], votes: Vote[], userI
   });
 }
 
-/** The community's recipes, with community-wide ratings and `homeId`'s menu votes. */
-export async function listRecipes(groupId: string, homeId: string | undefined): Promise<RecipeWithStats[]> {
+/**
+ * Every recipe (shared by all homes) with everyone's ratings, and this week's
+ * menu votes at `homeId`. The database only returns all of a home's votes to
+ * its admins; members just get their own (so `myVote` still works).
+ */
+export async function listRecipes(homeId: string | undefined): Promise<RecipeWithStats[]> {
   const { data: userData } = await supabase.auth.getUser();
   const [recipes, stats, votes] = await Promise.all([
-    supabase.from('recipes').select(RECIPE_SELECT).eq('group_id', groupId).order('created_at', { ascending: false }),
-    supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score').eq('group_id', groupId),
+    supabase.from('recipes').select(RECIPE_SELECT).order('created_at', { ascending: false }),
+    supabase.from('recipe_stats').select('recipe_id, rating_count, avg_score'),
     homeId
       ? supabase.from('menu_votes').select('recipe_id, user_id').eq('home_id', homeId).gte('created_at', voteWeekStart())
       : Promise.resolve({ data: [] as Vote[] }),
@@ -81,7 +85,6 @@ export async function setMenuVote(recipeId: string, homeId: string, vote: boolea
 }
 
 export type RecipeInput = {
-  group_id: string;
   title: string;
   description: string;
   servings: number | null;
@@ -115,9 +118,11 @@ export async function rateRecipe(recipeId: string, score: number) {
   if (error) throw error;
 }
 
-export async function uploadPhoto(groupId: string, uri: string, mimeType = 'image/jpeg'): Promise<string> {
+/** Upload a recipe photo to the uploader's own folder; returns its storage path. */
+export async function uploadPhoto(uri: string, mimeType = 'image/jpeg'): Promise<string> {
+  const { data: userData } = await supabase.auth.getUser();
   const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
-  const path = `${groupId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const path = `${userData.user!.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const body = await fetch(uri).then((r) => r.arrayBuffer());
   const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, body, { contentType: mimeType });
   if (error) throw error;
@@ -279,11 +284,12 @@ export async function removeGroceryExtra(id: string) {
 
 export type Member = { user_id: string; role: 'admin' | 'member'; display_name: string };
 
-export async function listMembers(groupId: string): Promise<Member[]> {
+/** People in a home and their role there. */
+export async function listMembers(homeId: string): Promise<Member[]> {
   const { data, error } = await supabase
-    .from('group_members')
+    .from('home_members')
     .select('user_id, role, profile:profiles(display_name)')
-    .eq('group_id', groupId)
+    .eq('home_id', homeId)
     .order('joined_at');
   if (error) throw error;
   return (data as unknown as { user_id: string; role: 'admin' | 'member'; profile: { display_name: string } | null }[]).map(
@@ -291,7 +297,46 @@ export async function listMembers(groupId: string): Promise<Member[]> {
   );
 }
 
-export async function setMemberRole(groupId: string, userId: string, role: 'admin' | 'member') {
-  const { error } = await supabase.from('group_members').update({ role }).eq('group_id', groupId).eq('user_id', userId);
+/** Make someone an admin or member of a home (the home's admins only). */
+export async function setMemberRole(homeId: string, userId: string, role: 'admin' | 'member') {
+  const { error } = await supabase.from('home_members').update({ role }).eq('home_id', homeId).eq('user_id', userId);
   if (error) throw error;
+}
+
+// --- Gallery ----------------------------------------------------------------
+
+/** A photo someone took when they made a recipe. Shared by everyone. */
+export type GalleryPhoto = {
+  id: string;
+  recipe_id: string;
+  user_id: string;
+  photo_path: string;
+  caption: string;
+  created_at: string;
+  author: { display_name: string } | null;
+};
+
+export async function listGallery(recipeId: string): Promise<GalleryPhoto[]> {
+  const { data, error } = await supabase
+    .from('recipe_gallery')
+    .select('*, author:profiles(display_name)')
+    .eq('recipe_id', recipeId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as GalleryPhoto[];
+}
+
+export async function addGalleryPhoto(recipeId: string, uri: string, mimeType = 'image/jpeg') {
+  const path = await uploadPhoto(uri, mimeType);
+  const { error } = await supabase.from('recipe_gallery').insert({ recipe_id: recipeId, photo_path: path });
+  if (error) {
+    await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+    throw error;
+  }
+}
+
+export async function deleteGalleryPhoto(photo: GalleryPhoto) {
+  const { error } = await supabase.from('recipe_gallery').delete().eq('id', photo.id);
+  if (error) throw error;
+  await supabase.storage.from(PHOTO_BUCKET).remove([photo.photo_path]);
 }

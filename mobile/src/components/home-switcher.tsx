@@ -3,20 +3,18 @@ import { Modal, Pressable, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
-import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 
 import { Divider, Icon, T } from './ui';
 
 /**
  * Which home's menu, groceries and pantry are shown. A pill with the home's
- * name; tap it to switch to any home in the community.
+ * name; tap it to switch between the homes you belong to.
  */
 export function HomeSwitcher() {
   const Colors = useColors();
   const styles = useStyles();
   const { homes, activeHome, setActiveHome } = useGroups();
-  const userId = useAuth().session?.user.id;
   const [open, setOpen] = useState(false);
   if (!activeHome) return null;
   const canSwitch = homes.length > 1;
@@ -63,7 +61,7 @@ export function HomeSwitcher() {
                     <T style={{ flex: 1, fontWeight: selected ? '600' : '400' }} numberOfLines={1}>
                       {h.name}
                     </T>
-                    {!!userId && h.members.includes(userId) && <T variant="small">Your home</T>}
+                    {h.role === 'admin' && <T variant="small">Admin</T>}
                   </Pressable>
                 </View>
               );

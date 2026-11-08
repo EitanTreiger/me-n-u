@@ -38,8 +38,8 @@ function RootNavigator() {
   const Colors = useColors();
   const { session, loading } = useAuth();
   const groups = useGroups();
-  // Signed in but not in any community yet: the only screen is create-or-join.
-  const inCommunity = groups.memberships.length > 0;
+  // Signed in but not in any home yet: the only screen is create-or-join.
+  const inHome = groups.homes.length > 0;
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
@@ -57,10 +57,10 @@ function RootNavigator() {
         headerBackButtonDisplayMode: 'minimal',
         contentStyle: { backgroundColor: Colors.background },
       }}>
-      <Stack.Protected guard={!!session && !inCommunity}>
+      <Stack.Protected guard={!!session && !inHome}>
         <Stack.Screen name="welcome" options={{ headerShown: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={!!session && inCommunity}>
+      <Stack.Protected guard={!!session && inHome}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/[id]" options={{ title: '' }} />
         <Stack.Screen name="recipe/new" options={{ title: 'New recipe', presentation: 'modal' }} />
