@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BottomTabBar, Tabs } from 'expo-router/tabs';
 import type { ComponentProps } from 'react';
 import { View, type ColorValue } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
@@ -14,6 +15,18 @@ function tabIcon(active: IconName, inactive: IconName) {
   return function TabIcon({ color, focused, size }: { color: ColorValue; focused: boolean; size: number }) {
     return <Ionicons name={focused ? active : inactive} size={size - 2} color={color as string} />;
   };
+}
+
+/** Phones: a slim bar across the top with the logo in the middle. */
+function MobileTopBar() {
+  const styles = useStyles();
+  return (
+    <SafeAreaView edges={['top']} style={styles.topBar}>
+      <View style={styles.topBarInner}>
+        <Wordmark height={28} />
+      </View>
+    </SafeAreaView>
+  );
 }
 
 export default function TabsLayout() {
@@ -49,7 +62,9 @@ export default function TabsLayout() {
         )
       }
       screenOptions={{
-        headerShown: false,
+        // Computers show the logo at the top of the sidebar instead.
+        headerShown: !wide,
+        header: () => <MobileTopBar />,
         tabBarPosition: wide ? 'left' : 'bottom',
         tabBarVariant: wide ? 'material' : 'uikit',
         tabBarLabelPosition: wide ? 'beside-icon' : 'below-icon',
@@ -75,6 +90,8 @@ const useStyles = makeStyles((Colors) => ({
   sidebar: { height: '100%', backgroundColor: Colors.surface, borderRightWidth: 1, borderRightColor: Colors.border },
   sidebarBrand: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
   sidebarFooter: { borderTopWidth: 1, borderTopColor: Colors.border },
+  topBar: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  topBarInner: { height: 48, alignItems: 'center', justifyContent: 'center' },
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'flex-start',

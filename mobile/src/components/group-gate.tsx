@@ -39,25 +39,27 @@ export function GroupGate({ title, children, needsHome }: { title: string; child
   return <>{children}</>;
 }
 
+/**
+ * Signed in but not in a home yet. Communities (the company) aren't created in
+ * the app, and only admins add homes, so the only step here is joining a home.
+ */
 export function CommunitySetup({ title }: { title: string }) {
   const Colors = useColors();
   const styles = useStyles();
   const { displayName } = useAuth();
-  const { createGroup, joinHome } = useGroups();
-  const [name, setName] = useState('');
+  const { joinHome } = useGroups();
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState<'create' | 'join' | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(kind: 'create' | 'join') {
-    setBusy(kind);
+  async function join() {
+    setBusy(true);
     setError(null);
     try {
-      if (kind === 'create') await createGroup(name, '');
-      else await joinHome(code);
+      await joinHome(code);
     } catch (e) {
       setError(friendlyError(e));
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -66,59 +68,32 @@ export function CommunitySetup({ title }: { title: string }) {
       <View style={styles.intro}>
         <T variant="heading">Welcome{displayName ? `, ${displayName}` : ''}!</T>
         <T variant="small">
-          A community shares one recipe book, and each home in it has its own weekly menu, grocery list and pantry. Start a
-          community, or join your home with the code or link from an admin.
+          {"You're not in a home yet. Ask your manager for your home's join link, or enter its code below."}
         </T>
       </View>
 
-      {/* Stacked on every screen size: start first, join below. */}
-      <View style={styles.options}>
-        <Card style={styles.option}>
-          <View style={styles.optionHeader}>
-            <View style={styles.optionIcon}>
-              <Icon name="home-outline" size={20} color={Colors.onPrimary} />
-            </View>
-            <T variant="subheading">Start a community</T>
+      <Card style={styles.option}>
+        <View style={styles.optionHeader}>
+          <View style={styles.optionIcon}>
+            <Icon name="enter-outline" size={20} color={Colors.onPrimary} />
           </View>
-          <T variant="small">
-            {"You'll be its admin: you add homes, plan their menus, invite people and can make others admins. Your first home gets the same name; you can add more later."}
-          </T>
-          <Field label="Community name" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" />
-          <Button title="Create community" icon="add" onPress={() => run('create')} loading={busy === 'create'} disabled={!name.trim() || !!busy} />
-        </Card>
-
-        <Card style={styles.option}>
-          <View style={styles.optionHeader}>
-            <View style={styles.optionIcon}>
-              <Icon name="enter-outline" size={20} color={Colors.onPrimary} />
-            </View>
-            <T variant="subheading">Join your home</T>
-          </View>
-          <T variant="small">
-            {
-              "You'll join as a member: you can share and rate recipes, vote for the menu and use the grocery list. An admin can make you an admin later."
-            }
-          </T>
-          <Field
-            label="Home code"
-            value={code}
-            onChangeText={(v) => setCode(v.toUpperCase())}
-            placeholder="ABC234"
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={6}
-            style={styles.codeInput}
-          />
-          <Button
-            title="Join home"
-            icon="enter-outline"
-            variant="secondary"
-            onPress={() => run('join')}
-            loading={busy === 'join'}
-            disabled={code.trim().length < 6 || !!busy}
-          />
-        </Card>
-      </View>
+          <T variant="subheading">Join your home</T>
+        </View>
+        <T variant="small">
+          {"You'll see your home's weekly menu, grocery list and pantry, and can share, rate and vote for recipes."}
+        </T>
+        <Field
+          label="Home code"
+          value={code}
+          onChangeText={(v) => setCode(v.toUpperCase())}
+          placeholder="ABC234"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={6}
+          style={styles.codeInput}
+        />
+        <Button title="Join home" icon="enter-outline" onPress={join} loading={busy} disabled={code.trim().length < 6 || busy} />
+      </Card>
       <View style={{ marginTop: Spacing.md }}>
         <ErrorBanner message={error} />
       </View>
@@ -128,7 +103,6 @@ export function CommunitySetup({ title }: { title: string }) {
 
 const useStyles = makeStyles((Colors) => ({
   intro: { gap: Spacing.xs, marginBottom: Spacing.lg },
-  options: { gap: Spacing.md },
   option: { gap: Spacing.md },
   optionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   optionIcon: {
