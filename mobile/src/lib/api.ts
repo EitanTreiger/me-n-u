@@ -319,6 +319,21 @@ export async function listAllHomes(): Promise<{ id: string; name: string }[]> {
   return (data ?? []) as { id: string; name: string }[];
 }
 
+// --- Read aloud -------------------------------------------------------------
+
+/** A spoken clip of `text` (ElevenLabs, cached on the server), as an audio URL. */
+export async function speakText(text: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('speak', { body: { text } });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const payload = await error.context.json().catch(() => null);
+      throw new Error(payload?.error ?? 'Could not read this step aloud.');
+    }
+    throw error;
+  }
+  return (data as { url: string }).url;
+}
+
 // --- Gallery ----------------------------------------------------------------
 
 /** A photo someone took when they made a recipe. Shared by everyone. */

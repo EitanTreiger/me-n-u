@@ -389,6 +389,16 @@ export default function RecipeDetail() {
   const stepsSection = (
     <>
       <SectionHeader title={`Steps · ${recipe.steps.length}`} />
+      {recipe.steps.length > 0 && (
+        <Button
+          title="Listen to recipe"
+          icon="headset-outline"
+          variant="secondary"
+          compact
+          onPress={() => router.push({ pathname: '/recipe/listen/[id]', params: { id: recipe.id } })}
+          style={{ alignSelf: 'flex-start', marginBottom: Spacing.md }}
+        />
+      )}
       <View style={{ gap: Spacing.md }}>
         {recipe.steps.map((step, i) => (
           <View key={i} style={styles.step}>
