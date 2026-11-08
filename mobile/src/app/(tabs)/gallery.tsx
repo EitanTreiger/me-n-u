@@ -7,7 +7,7 @@ import { Screen } from '@/components/screen';
 import { Button, Card, EmptyState, ErrorBanner, Loading, T } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
-import { listAllGallery, type GalleryFeedPhoto } from '@/lib/api';
+import { galleryCredit, listAllGallery, type GalleryFeedPhoto } from '@/lib/api';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import { makeStyles } from '@/providers/appearance';
 
@@ -96,7 +96,7 @@ export default function GalleryTab() {
                 disabled={!p.recipe}
                 onPress={() => p.recipe && router.push({ pathname: '/recipe/[id]', params: { id: p.recipe.id } })}
                 accessibilityRole="button"
-                accessibilityLabel={`${p.recipe?.title ?? 'Recipe'}, photo by ${p.author?.display_name || 'someone'}. Open recipe`}
+                accessibilityLabel={`${p.recipe?.title ?? 'Recipe'}, ${galleryCredit(p)}. Open recipe`}
                 style={({ pressed }) => [styles.tile, { width: `${100 / columns}%` }, pressed && { opacity: 0.8 }]}>
                 <View style={styles.card}>
                   <Image source={{ uri: photoUrl(p.photo_path)! }} style={styles.image} contentFit="cover" transition={150} />
@@ -105,7 +105,7 @@ export default function GalleryTab() {
                       {p.recipe?.title ?? 'Recipe removed'}
                     </T>
                     <T variant="small" numberOfLines={1}>
-                      {p.author?.display_name || 'Someone'}
+                      {galleryCredit(p)}
                     </T>
                   </View>
                 </View>

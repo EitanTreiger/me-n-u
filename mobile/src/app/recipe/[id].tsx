@@ -192,8 +192,7 @@ export default function RecipeDetail() {
       <View style={styles.titleBlock}>
         <T variant="title">{recipe.title}</T>
         <T variant="small">
-          Shared by {recipe.author?.display_name || 'a member'}
-          {recipe.source === 'photo' ? ' · from a photo' : recipe.source === 'youtube' ? ' · from YouTube' : ''}
+          {recipe.source === 'photo' ? 'From a photo' : recipe.source === 'youtube' ? 'From YouTube' : 'Shared recipe'}
         </T>
         {!!recipe.description && <T style={{ marginTop: Spacing.sm }}>{recipe.description}</T>}
       </View>

@@ -329,13 +329,20 @@ export type GalleryPhoto = {
   photo_path: string;
   caption: string;
   created_at: string;
-  author: { display_name: string } | null;
+  /** The home it was posted from; posters themselves stay anonymous. */
+  home_name: string;
 };
+
+/** Who a gallery photo is credited to, without naming the person. */
+export function galleryCredit(p: GalleryPhoto): string {
+  if (p.home_name) return `From ${p.home_name}`;
+  return p.caption || 'From a me-n-u home';
+}
 
 export async function listGallery(recipeId: string): Promise<GalleryPhoto[]> {
   const { data, error } = await supabase
     .from('recipe_gallery')
-    .select('*, author:profiles(display_name)')
+    .select('*')
     .eq('recipe_id', recipeId)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -350,16 +357,16 @@ export async function listAllGallery(page: number, pageSize = 30): Promise<Galle
   const from = page * pageSize;
   const { data, error } = await supabase
     .from('recipe_gallery')
-    .select('*, author:profiles(display_name), recipe:recipes(id, title)')
+    .select('*, recipe:recipes(id, title)')
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1);
   if (error) throw error;
   return data as GalleryFeedPhoto[];
 }
 
-export async function addGalleryPhoto(recipeId: string, uri: string, mimeType = 'image/jpeg') {
+export async function addGalleryPhoto(recipeId: string, homeId: string | null, uri: string, mimeType = 'image/jpeg') {
   const path = await uploadPhoto(uri, mimeType);
-  const { error } = await supabase.from('recipe_gallery').insert({ recipe_id: recipeId, photo_path: path });
+  const { error } = await supabase.from('recipe_gallery').insert({ recipe_id: recipeId, home_id: homeId, photo_path: path });
   if (error) {
     await supabase.storage.from(PHOTO_BUCKET).remove([path]);
     throw error;
