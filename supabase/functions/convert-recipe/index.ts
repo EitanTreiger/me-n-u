@@ -83,8 +83,13 @@ const receiptSchema = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['name', 'quantity', 'unit'],
+        required: ['is_food', 'name', 'quantity', 'unit'],
         properties: {
+          is_food: {
+            type: 'boolean',
+            description:
+              'true only if this is almost certainly something you eat, drink or cook with. false for anything else or anything you are unsure about (household, personal care, pet, store fees, totals, unreadable lines).',
+          },
           name: { type: 'string', description: "Plain food name a recipe would use, lowercase, e.g. 'eggs', 'cheddar cheese', 'chicken breast'" },
           quantity: { type: 'number', description: 'How many / how much was bought; 0 if unclear' },
           unit: { type: 'string', description: 'g, kg, ml, l, lb, oz, can, or empty string for countable items like eggs or apples' },
@@ -105,6 +110,8 @@ If the input is a photo of a finished dish with no written recipe, set is_recipe
 const RECEIPT_PROMPT = `This is a photo of a grocery receipt or a shopping list. List the food and cooking items on it, with how many or how much of each.
 Turn store abbreviations into plain names ("GRN ONION" -> "green onions", "LG EGGS 12CT" -> 12 eggs).
 Only include food and cooking ingredients (things you would eat, drink or cook with). Leave out everything else: cleaning and household products, paper towels, toilet paper, toiletries, medicine, vitamins, pet food, alcohol, tobacco, gift cards, bags, deposits, taxes, totals, discounts and coupons. If unsure whether something is food, leave it out.
+Also leave out store lines that aren't products: the store name and address, dates, cashier and register numbers, item codes and SKUs on their own, prices, quantities without a product, "you saved", points, payment and change lines. Never guess a name for a line you can't read.
+Set is_food to false for anything you included that might not be food.
 Use real kitchen measurements only (never "bag", "box", "bunch" or "head"): meat, fish, produce sold by weight, pasta and cheese in lb (convert kg or g to lb); rice, flour, sugar, oats, lentils and other dry goods in cups (about 2.5 cups per lb of rice, 3.5 cups per lb of flour); canned goods by the can; eggs and other items you count as a plain number with an empty unit.
 For salt, spices, dried herbs, oils, vinegar, sauces, condiments, milk and other hard-to-measure items use quantity 0 and an empty unit: they are tracked as in stock or not.`;
 
@@ -437,7 +444,10 @@ Deno.serve(async (req) => {
         false,
         { schema: receiptSchema, system: RECEIPT_PROMPT },
       );
-      return json({ items: out.items ?? [] });
+      const items = ((out.items as { is_food?: boolean; name: string; quantity: number; unit: string }[]) ?? [])
+        .filter((i) => i.is_food !== false && i.name?.trim())
+        .map(({ name, quantity, unit }) => ({ name, quantity, unit }));
+      return json({ items });
     } catch (e) {
       if (e instanceof UserFacingError) return json({ error: e.message }, e.status);
       return json({ error: "Couldn't read that receipt. Try a clearer photo." }, 500);
