@@ -3,12 +3,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
-import { missingIngredients } from '@/lib/ingredients';
 import { youtubeThumb } from '@/lib/ranking';
 import { photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
 
-import { Card, Chip, Icon, T } from './ui';
+import { Card, Icon, T } from './ui';
 
 export function RecipeThumb({ recipe, size = 84 }: { recipe: Pick<RecipeWithStats, 'photo_path' | 'video_url' | 'image_url'>; size?: number }) {
   const Colors = useColors();
@@ -47,14 +46,11 @@ export function isFavourite(recipe: RecipeWithStats): boolean {
 
 export function RecipeCard({
   recipe,
-  pantry,
   onPress,
   large = false,
   showVotes = false,
 }: {
   recipe: RecipeWithStats;
-  /** The home's pantry, to show what's missing. Admins only (members can't see the pantry). */
-  pantry?: string[] | null;
   onPress: () => void;
   /** Bigger photo and text, for computers. */
   large?: boolean;
@@ -63,9 +59,6 @@ export function RecipeCard({
 }) {
   const Colors = useColors();
   const styles = useStyles();
-  const missing = pantry ? missingIngredients(pantry, recipe.ingredients) : [];
-  const total = recipe.ingredients.length;
-  const ready = total > 0 && missing.length === 0;
   const cuisine = recipeCuisine(recipe.description);
   const metaText = large ? styles.metaLarge : undefined;
 
@@ -113,23 +106,6 @@ export function RecipeCard({
             </View>
           )}
         </View>
-
-        {!!pantry && total > 0 && (
-          <View style={styles.chips}>
-            {ready ? (
-              <Chip label="You have everything" tone="success" icon="checkmark-circle" />
-            ) : (
-              <Chip
-                label={`Need ${missing.length} of ${total}: ${missing
-                  .slice(0, large ? 4 : 2)
-                  .map((m) => m.name)
-                  .join(', ')}${missing.length > (large ? 4 : 2) ? '…' : ''}`}
-                tone="warning"
-                icon="cart-outline"
-              />
-            )}
-          </View>
-        )}
       </View>
     </Card>
   );
@@ -164,5 +140,4 @@ const useStyles = makeStyles((Colors) => ({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaLarge: { fontSize: 15 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 }));

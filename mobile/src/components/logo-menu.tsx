@@ -15,13 +15,13 @@ import { Button, Divider, Field, Icon, T, type IconName } from './ui';
 
 const WORDMARK = require('@/assets/images/logo-wordmark.png');
 
-// Whether this device should show me-n-u alerts (pantry changes and the like).
+// Whether this device should show me-n-u alerts (menu changes and the like).
 const NOTIFY_KEY = 'notificationsOn';
 
 const HELP = [
-  'Homes: each home has its own menu, grocery list and pantry. Switch homes above.',
+  'Homes: each home has its own menu and grocery list. Switch homes above.',
   'Join another home by picking it from the list on the Homes tab.',
-  "A home's creator is its admin and can make others acting admins. Admins plan the menu, run the grocery list and pantry, see menu votes and can delete recipes.",
+  "A home's creator is its admin and can make others acting admins. Admins plan the menu, run the grocery list, see menu votes and can delete recipes.",
   'Recipes, ratings and gallery photos are shared by every home.',
 ];
 

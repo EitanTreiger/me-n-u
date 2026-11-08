@@ -13,18 +13,14 @@ import { deleteRecipe, getRecipe, rateRecipe, setMenuVote } from '@/lib/api';
 import {
   formatFactor,
   formatIngredient,
-  pantryHas,
-  pantryUsage,
   scaleIngredients,
   servingFactor,
-  type PantryUse,
 } from '@/lib/ingredients';
 import { youtubeThumb } from '@/lib/ranking';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
 import { formatTimestamp, youtubeAt } from '@/lib/youtube';
 import { useGroups } from '@/providers/groups';
-import { usePantry } from '@/providers/pantry';
 
 function confirm(title: string, message: string, onYes: () => void) {
   if (Platform.OS === 'web') {
@@ -44,23 +40,16 @@ export default function RecipeDetail() {
   const { isAdmin, isAnyAdmin, activeHome } = useGroups();
   // Menu votes are per home; recipes and ratings are shared by every home.
   const homeId = activeHome?.id;
-  const pantry = usePantry();
   const { wide, contentWidth } = useLayout();
   const [recipe, setRecipe] = useState<RecipeWithStats | null>(null);
   const [myScore, setMyScore] = useState<number | null>(null);
   const [timesOnMenu, setTimesOnMenu] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
   const [voting, setVoting] = useState(false);
   // Serving scaler. `people` = how many we're cooking for; `baseGuess` is used
   // only when the recipe doesn't say how many it serves.
   const [people, setPeople] = useState<number | null>(null);
   const [baseGuess, setBaseGuess] = useState(4);
-  // "I made this" panel: which pantry changes to apply.
-  const [madeIt, setMadeIt] = useState(false);
-  const [usage, setUsage] = useState<(PantryUse & { apply: boolean })[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [doneMessage, setDoneMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -101,7 +90,6 @@ export default function RecipeDetail() {
   const cookingFor = people ?? base;
   const factor = servingFactor(base, cookingFor);
   const ingredients = scaleIngredients(recipe.ingredients, factor);
-  const missing = ingredients.filter((i) => !pantryHas(pantry.names, i.name));
   // Recipes are shared by every home: admins (of any home) can delete them; members can't.
   const canDelete = isAnyAdmin;
   const times = recipe.video_url && recipe.step_timestamps?.length === recipe.steps.length ? recipe.step_timestamps : null;
@@ -136,36 +124,6 @@ export default function RecipeDetail() {
     }
   }
 
-  async function addMissingToPantry() {
-    setAdding(true);
-    try {
-      await pantry.add(missing);
-    } catch (e) {
-      setError(friendlyError(e));
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  function openMadeIt() {
-    // Pre-tick the changes we can work out; leave "used up?" ones for the cook.
-    setUsage(pantryUsage(pantry.items, ingredients).map((u) => ({ ...u, apply: u.after !== null })));
-    setDoneMessage(null);
-    setMadeIt(true);
-  }
-
-  async function finishMadeIt() {
-    setSaving(true);
-    try {
-      await pantry.apply(usage.filter((u) => u.apply).map((u) => ({ id: u.pantryId, quantity: u.after })));
-      setMadeIt(false);
-      setDoneMessage(myScore ? 'Pantry updated. Thanks for cooking!' : 'Pantry updated. How was it? Rate it above.');
-    } catch (e) {
-      setError(friendlyError(e));
-    } finally {
-      setSaving(false);
-    }
-  }
 
   // ---- Sections (arranged in one or two columns below) ----
 
@@ -254,10 +212,6 @@ export default function RecipeDetail() {
             style={{ flex: 1 }}
           />
         )}
-        {/* Admins mark a cooked recipe as completed, which takes its ingredients out of the pantry. */}
-        {isAdmin && (
-          <Button title="Completed" icon="checkmark-done-outline" variant="secondary" onPress={openMadeIt} style={{ flex: 1 }} />
-        )}
       </View>
       {/* Votes are counted per home; admins see the home they're viewing. */}
       {activeHome && (isAdmin ? recipe.votes > 0 : true) && (
@@ -267,45 +221,7 @@ export default function RecipeDetail() {
             : `Your vote counts toward ${activeHome.name}'s menu.`}
         </T>
       )}
-      {doneMessage && <T variant="small" style={{ color: Colors.success, marginTop: Spacing.sm }}>{doneMessage}</T>}
 
-      {madeIt && isAdmin && (
-        <Card style={styles.madeIt}>
-          <T variant="subheading">Recipe completed: update the pantry</T>
-          <T variant="small">
-            {usage.length
-              ? `These ingredients (for ${cookingFor}) will come out of the pantry. Untick anything you didn't use. Basics like salt, spices and oils stay in stock.`
-              : "None of this recipe's ingredients are in the pantry with an amount, so there's nothing to take out. Basics like salt stay in stock."}
-          </T>
-          {usage.map((u, i) => (
-            <Pressable
-              key={u.pantryId}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: u.apply }}
-              onPress={() => setUsage((prev) => prev.map((x, j) => (j === i ? { ...x, apply: !x.apply } : x)))}
-              style={styles.usageRow}>
-              <View style={[styles.checkbox, u.apply && styles.checkboxOn]}>
-                {u.apply && <Icon name="checkmark" size={16} color={Colors.onPrimary} />}
-              </View>
-              <T style={{ flex: 1 }}>
-                {u.after === null
-                  ? `${u.before}: used it all up`
-                  : `${u.before} → ${u.after > 0 ? formatIngredient({ name: u.name, quantity: u.after, unit: u.unit }) : 'none left'}`}
-              </T>
-            </Pressable>
-          ))}
-          {!myScore && (
-            <View style={styles.inline}>
-              <T variant="small">How was it?</T>
-              <Stars value={0} size={26} onChange={rate} />
-            </View>
-          )}
-          <View style={styles.actions}>
-            <Button title="Done" icon="checkmark" onPress={finishMadeIt} loading={saving} style={{ flex: 1 }} />
-            <Button title="Cancel" variant="ghost" onPress={() => setMadeIt(false)} style={{ flex: 1 }} />
-          </View>
-        </Card>
-      )}
 
       <Card style={styles.scaler}>
         <View style={styles.scalerRow}>
@@ -341,48 +257,18 @@ export default function RecipeDetail() {
     <>
       <SectionHeader
         title={`Ingredients · ${recipe.ingredients.length}${factor !== 1 ? ` · for ${cookingFor}` : ''}`}
-        action={
-          !isAdmin ? undefined : missing.length > 0 ? (
-            <Chip label={`${missing.length} to buy`} tone="warning" icon="cart-outline" />
-          ) : recipe.ingredients.length > 0 ? (
-            <Chip label="All in your pantry" tone="success" icon="checkmark-circle" />
-          ) : undefined
-        }
       />
       <Card style={{ paddingVertical: Spacing.xs }}>
-        {ingredients.map((ing, i) => {
-          const have = pantryHas(pantry.names, ing.name);
-          return (
-            <View key={`${ing.name}-${i}`}>
-              {i > 0 && <Divider />}
-              <View style={styles.ingredient}>
-                {isAdmin ? (
-                  <Icon name={have ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={have ? Colors.success : Colors.warning} />
-                ) : (
-                  <Icon name="ellipse" size={8} color={Colors.textMuted} />
-                )}
-                <T style={{ flex: 1 }}>{formatIngredient(ing)}</T>
-                {isAdmin && (
-                  <T variant="small" style={{ color: have ? Colors.success : Colors.warning }}>
-                    {have ? 'Have' : 'Need'}
-                  </T>
-                )}
-              </View>
+        {ingredients.map((ing, i) => (
+          <View key={`${ing.name}-${i}`}>
+            {i > 0 && <Divider />}
+            <View style={styles.ingredient}>
+              <Icon name="ellipse" size={8} color={Colors.textMuted} />
+              <T style={{ flex: 1 }}>{formatIngredient(ing)}</T>
             </View>
-          );
-        })}
+          </View>
+        ))}
       </Card>
-      {isAdmin && missing.length > 0 && (
-        <Button
-          title="I've got these now — add to my pantry"
-          variant="ghost"
-          icon="basket-outline"
-          compact
-          loading={adding}
-          onPress={addMissingToPantry}
-          style={{ alignSelf: 'flex-start', marginTop: Spacing.xs }}
-        />
-      )}
     </>
   );
 
@@ -579,18 +465,6 @@ const useStyles = makeStyles((Colors) => ({
   ratingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.md, flexWrap: 'wrap' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.md },
-  madeIt: { gap: Spacing.md, marginTop: Spacing.md, borderColor: Colors.primary, borderWidth: 2 },
-  usageRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 4 },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: Radius.sm - 2,
-    borderWidth: 2,
-    borderColor: Colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   scaler: { gap: Spacing.md, marginTop: Spacing.lg },
   scalerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
   resetLink: { color: Colors.primaryStrong, fontWeight: '600' },

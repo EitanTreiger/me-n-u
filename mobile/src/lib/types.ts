@@ -20,7 +20,7 @@ export type HomeRole = 'admin' | 'acting_admin' | 'member';
 /** Admin access in a home: the creator or an acting admin. */
 export const isAdminRole = (role: HomeRole | undefined) => role === 'admin' || role === 'acting_admin';
 
-/** A home the user belongs to: it has its own menu, groceries, pantry and admins. */
+/** A home the user belongs to: it has its own menu, groceries and admins. */
 export type Home = {
   id: string;
   name: string;
@@ -80,14 +80,6 @@ export type MenuItem = {
   recipe_id: string;
   servings: number | null; // people this meal is for; null = as the recipe is written
   recipe?: Recipe | null;
-};
-
-export type PantryItem = {
-  id: string;
-  name: string;
-  quantity: number; // 0 = amount not tracked
-  unit: string;
-  created_at: string;
 };
 
 export type ConvertedRecipe = {

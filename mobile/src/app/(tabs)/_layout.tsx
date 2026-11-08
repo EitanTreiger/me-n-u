@@ -38,7 +38,7 @@ export default function TabsLayout() {
   const styles = useStyles();
   // Computers and big tablets get a sidebar; phones keep the bottom tab bar.
   const { wide } = useLayout();
-  // Groceries and the pantry are for the home's admins only.
+  // Groceries are for the home's admins only.
   const { isAdmin } = useGroups();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -108,10 +108,6 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="groceries"
         options={{ title: 'Groceries', href: isAdmin ? undefined : null, tabBarIcon: tabIcon('cart', 'cart-outline') }}
-      />
-      <Tabs.Screen
-        name="pantry"
-        options={{ title: 'Pantry', href: isAdmin ? undefined : null, tabBarIcon: tabIcon('basket', 'basket-outline') }}
       />
       <Tabs.Screen name="groups" options={{ title: 'Homes', tabBarIcon: tabIcon('home', 'home-outline') }} />
     </Tabs>

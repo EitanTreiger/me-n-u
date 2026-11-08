@@ -1,8 +1,4 @@
-import { convertWeight, isStaple } from './pantry-units';
 import type { Ingredient } from './types';
-
-// Things nearly every kitchen has; never reported as "missing".
-const ALWAYS_ON_HAND = new Set(['water', 'ice', 'tap water', 'hot water', 'cold water', 'boiling water']);
 
 const DESCRIPTORS =
   /\b(fresh|freshly|chopped|diced|minced|sliced|grated|shredded|ground|large|small|medium|ripe|boneless|skinless|organic|raw|cooked|frozen|canned|dried|whole|finely|roughly|thinly|optional|to taste|softened|melted|room temperature|peeled|crushed|packed|plain|extra virgin)\b/g;
@@ -28,68 +24,6 @@ export function normalizeName(name: string): string {
     .map(singular)
     .join(' ')
     .trim();
-}
-
-/**
- * Does the pantry cover this ingredient? Matches on whole words in either
- * direction, so pantry "rice" covers "basmati rice" and pantry "olive oil"
- * covers "oil".
- */
-export function pantryHas(pantry: string[], ingredientName: string): boolean {
-  const target = normalizeName(ingredientName);
-  if (!target || ALWAYS_ON_HAND.has(target)) return true;
-  const padded = ` ${target} `;
-  return pantry.some((raw) => {
-    const p = normalizeName(raw);
-    if (!p) return false;
-    return p === target || padded.includes(` ${p} `) || ` ${p} `.includes(padded);
-  });
-}
-
-export type PantryUse = {
-  pantryId: string;
-  name: string;
-  before: string; // "12 eggs"
-  after: number | null; // new amount, or null when it can't be worked out
-  ingredient: Ingredient;
-  unit: string; // the pantry item's unit, for showing `after`
-};
-
-/**
- * What cooking these ingredients takes out of the pantry. Amounts are
- * subtracted when pantry and recipe use the same unit; otherwise `after` is
- * null and the cook decides whether the item is used up.
- */
-export function pantryUsage(
-  pantry: { id: string; name: string; quantity: number; unit: string }[],
-  ingredients: Ingredient[],
-): PantryUse[] {
-  const uses: PantryUse[] = [];
-  for (const ing of ingredients) {
-    const item = pantry.find((p) => pantryHas([p.name], ing.name));
-    if (!item || uses.some((u) => u.pantryId === item.id) || ALWAYS_ON_HAND.has(normalizeName(ing.name))) continue;
-    // Salt, spices and other staples are never used up.
-    // Staples and items without an amount ("in stock") are never used up.
-    if (isStaple(item.name) || isStaple(ing.name) || item.quantity <= 0) continue;
-    const pantryUnit = normalizeUnit(item.unit);
-    const used =
-      pantryUnit === normalizeUnit(ing.unit) ? ing.quantity : convertWeight(ing.quantity, normalizeUnit(ing.unit), pantryUnit);
-    const after =
-      item.quantity > 0 && ing.quantity > 0 && used !== null ? Math.max(0, Math.round((item.quantity - used) * 100) / 100) : null;
-    uses.push({
-      pantryId: item.id,
-      name: item.name,
-      before: item.quantity > 0 ? formatIngredient({ name: item.name, quantity: item.quantity, unit: item.unit }) : item.name,
-      after,
-      ingredient: ing,
-      unit: item.unit,
-    });
-  }
-  return uses;
-}
-
-export function missingIngredients(pantry: string[], ingredients: Ingredient[]): Ingredient[] {
-  return ingredients.filter((i) => !pantryHas(pantry, i.name));
 }
 
 const UNIT_ALIASES: Record<string, string> = {
@@ -252,31 +186,6 @@ export type GroceryLine = {
   unit: string;
   recipes: string[];
 };
-
-/**
- * Does the pantry cover a grocery line?
- * - 'buy': not in the pantry, buy it all.
- * - 'short': some in the pantry; `quantity` is what's still needed
- *   (need 12 eggs, have 2 -> buy 10).
- * - 'covered': enough in the pantry. Items "in stock" without an amount
- *   (salt, oils...), "to taste" lines and amounts in units that can't be
- *   compared (2 cups vs 1 lb) count as covered.
- */
-export function pantryCoverage(
-  pantry: { name: string; quantity: number; unit: string }[],
-  line: { name: string; quantity: number; unit: string },
-): { status: 'buy' } | { status: 'short'; quantity: number; have: number } | { status: 'covered' } {
-  if (!pantryHas(pantry.map((p) => p.name), line.name)) return { status: 'buy' };
-  const item = pantry.find((p) => pantryHas([p.name], line.name));
-  // Matched an always-on-hand item (water), an amount-less staple, or a "to taste" line.
-  if (!item || item.quantity <= 0 || line.quantity <= 0) return { status: 'covered' };
-  const pantryUnit = normalizeUnit(item.unit);
-  const lineUnit = normalizeUnit(line.unit);
-  const have = pantryUnit === lineUnit ? item.quantity : convertWeight(item.quantity, pantryUnit, lineUnit);
-  if (have === null) return { status: 'covered' };
-  const need = Math.round((line.quantity - have) * 100) / 100;
-  return need > 0 ? { status: 'short', quantity: need, have } : { status: 'covered' };
-}
 
 /** Combine ingredients from many recipes into one shopping list. */
 export function aggregateIngredients(entries: { recipeTitle: string; ingredients: Ingredient[] }[]): GroceryLine[] {

@@ -11,7 +11,7 @@ const ACTIVE_HOME_KEY = 'activeHomeId';
 type GroupsState = {
   /** Every home the user belongs to, with their role in each. */
   homes: Home[];
-  /** The home being viewed: its menu, groceries and pantry are shown. */
+  /** The home being viewed: its menu and groceries are shown. */
   activeHome: Home | null;
   /** Admin (creator or acting admin) of the home being viewed; it never carries over to other homes. */
   isAdmin: boolean;
