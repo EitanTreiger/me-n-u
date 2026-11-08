@@ -10,6 +10,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { spoken } from './spoken.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -45,7 +47,8 @@ Deno.serve(async (req) => {
   if (!user.user) return json({ error: 'Please sign in again.' }, 401);
 
   const { text } = await req.json().catch(() => ({ text: '' }));
-  const clean = String(text ?? '').trim().slice(0, MAX_CHARS);
+  // Read units and fractions as words ("150g" -> "150 grams"); only the audio changes.
+  const clean = spoken(String(text ?? '')).slice(0, MAX_CHARS);
   if (!clean) return json({ error: 'Nothing to read.' }, 400);
 
   const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
