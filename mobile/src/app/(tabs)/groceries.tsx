@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, Share, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
 import { HomeSwitcher } from '@/components/home-switcher';
@@ -26,6 +26,7 @@ import {
   tidyAmount,
   type GroceryLine,
 } from '@/lib/ingredients';
+import { shareText } from '@/lib/share';
 import { friendlyError } from '@/lib/supabase';
 import type { MenuItem } from '@/lib/types';
 import { weekLabel, weekStart } from '@/lib/week';
@@ -48,6 +49,7 @@ function GroceryList() {
   const [extras, setExtras] = useState<GroceryExtra[]>([]);
   const [newExtra, setNewExtra] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Each home shops for its own menu.
   const homeId = activeHome!.id;
@@ -128,9 +130,16 @@ function GroceryList() {
 
   async function share() {
     const items = [...toBuy.map(lineText), ...extras.map((e) => e.name)];
-    await Share.share({
-      message: `Groceries for ${activeHome!.name} (${weekLabel(week)}):\n\n${items.map((i) => `• ${i}`).join('\n')}`,
-    });
+    setNotice(null);
+    try {
+      const result = await shareText(
+        `Groceries for ${activeHome!.name} (${weekLabel(week)}):\n\n${items.map((i) => `• ${i}`).join('\n')}`,
+        'Grocery list',
+      );
+      if (result === 'copied') setNotice('Grocery list copied. Paste it into a message or note.');
+    } catch (e) {
+      setError(friendlyError(e));
+    }
   }
 
   const recipeCount = new Set((menu ?? []).map((m) => m.recipe_id)).size;
@@ -159,6 +168,11 @@ function GroceryList() {
         }}
       />
       <ErrorBanner message={error} />
+      {notice && (
+        <T variant="small" style={{ color: Colors.success }}>
+          {notice}
+        </T>
+      )}
 
       {menu === null ? (
         <Loading />
