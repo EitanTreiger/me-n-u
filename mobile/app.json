@@ -40,7 +40,8 @@
           "photosPermission": "me-n-u uses your photos so you can share recipes and pictures of what you're cooking.",
           "cameraPermission": "me-n-u uses the camera so you can photograph recipe cards and dishes."
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,
