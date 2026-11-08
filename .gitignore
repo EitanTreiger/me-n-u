@@ -1,0 +1,3 @@
+# Vercel CLI link and pulled env (never commit)
+.vercel
+.env*.local
