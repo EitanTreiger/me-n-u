@@ -32,22 +32,21 @@ function useLogoTint() {
 }
 
 /**
- * The signed-in user's profile picture: the one they uploaded, else their
- * Google photo, else the first letter of their name on sage.
+ * The signed-in user's profile picture: the one they uploaded, else a plain
+ * circle with a person icon until they add one (Settings → Add photo).
  */
 export function Avatar({ size = 36 }: { size?: number }) {
+  const Colors = useColors();
   const styles = useStyles();
-  const { session, displayName, avatarPath } = useAuth();
-  const meta = session?.user.user_metadata ?? {};
-  const photo: string | undefined = avatarUrl(avatarPath) ?? meta.avatar_url ?? meta.picture;
-  const initial = (displayName || session?.user.email || '?').trim().slice(0, 1).toUpperCase();
+  const { avatarPath } = useAuth();
+  const photo = avatarUrl(avatarPath);
   const circle = { width: size, height: size, borderRadius: size / 2 };
   if (photo) {
     return <Image source={{ uri: photo }} style={[styles.avatar, circle]} contentFit="cover" accessibilityLabel="Your profile picture" />;
   }
   return (
-    <View style={[styles.avatar, circle]} accessibilityLabel="Your profile picture">
-      <T style={[styles.avatarText, { fontSize: size * 0.42 }]}>{initial}</T>
+    <View style={[styles.avatar, styles.avatarEmpty, circle]} accessibilityLabel="No profile picture yet">
+      <Icon name="person" size={size * 0.55} color={Colors.textMuted} />
     </View>
   );
 }
@@ -272,7 +271,8 @@ const useStyles = makeStyles((Colors) => ({
   account: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.sm },
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   avatar: { backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  avatarText: { color: Colors.onPrimary, fontWeight: '700' },
+  // Placeholder circle before a picture is added.
+  avatarEmpty: { backgroundColor: Colors.primarySoft, borderWidth: 1, borderColor: Colors.border },
   cameraBadge: {
     position: 'absolute',
     right: -2,

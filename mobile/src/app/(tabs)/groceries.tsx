@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, Share, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
 import { HomeSwitcher } from '@/components/home-switcher';
@@ -20,12 +20,13 @@ import {
 import {
   aggregateIngredients,
   formatIngredient,
-  pantryHas,
+  pantryCoverage,
   scaleIngredients,
   servingFactor,
   tidyAmount,
   type GroceryLine,
 } from '@/lib/ingredients';
+import { shareText } from '@/lib/share';
 import { friendlyError } from '@/lib/supabase';
 import type { MenuItem } from '@/lib/types';
 import { weekLabel, weekStart } from '@/lib/week';
@@ -48,9 +49,17 @@ function GroceryList() {
   const [extras, setExtras] = useState<GroceryExtra[]>([]);
   const [newExtra, setNewExtra] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Each home shops for its own menu.
   const homeId = activeHome!.id;
+
+  // Switching home: don't show the previous home's list while the new one loads.
+  const [shownHome, setShownHome] = useState(homeId);
+  if (homeId !== shownHome) {
+    setShownHome(homeId);
+    setMenu(null);
+  }
 
   // When the Menu tab links here with a week, follow it.
   const [linkedWeek, setLinkedWeek] = useState(params.week);
@@ -93,8 +102,15 @@ function GroceryList() {
       ),
     [menu],
   );
-  const toBuy = lines.filter((l) => !pantryHas(pantry.names, l.name));
-  const inPantry = lines.filter((l) => pantryHas(pantry.names, l.name));
+  // Buy what the pantry doesn't have, and the rest of anything it's short of.
+  const toBuy: (GroceryLine & { have?: number })[] = [];
+  const inPantry: GroceryLine[] = [];
+  for (const l of lines) {
+    const cover = pantryCoverage(pantry.items, l);
+    if (cover.status === 'covered') inPantry.push(l);
+    else if (cover.status === 'short') toBuy.push({ ...l, quantity: cover.quantity, have: cover.have });
+    else toBuy.push(l);
+  }
 
   const total = toBuy.length + extras.length;
   const done = toBuy.filter((l) => checked.has(l.key)).length + extras.filter((e) => checked.has(`extra:${e.id}`)).length;
@@ -128,9 +144,16 @@ function GroceryList() {
 
   async function share() {
     const items = [...toBuy.map(lineText), ...extras.map((e) => e.name)];
-    await Share.share({
-      message: `Groceries for ${activeHome!.name} (${weekLabel(week)}):\n\n${items.map((i) => `• ${i}`).join('\n')}`,
-    });
+    setNotice(null);
+    try {
+      const result = await shareText(
+        `Groceries for ${activeHome!.name} (${weekLabel(week)}):\n\n${items.map((i) => `• ${i}`).join('\n')}`,
+        'Grocery list',
+      );
+      if (result === 'copied') setNotice('Grocery list copied. Paste it into a message or note.');
+    } catch (e) {
+      setError(friendlyError(e));
+    }
   }
 
   const recipeCount = new Set((menu ?? []).map((m) => m.recipe_id)).size;
@@ -159,6 +182,11 @@ function GroceryList() {
         }}
       />
       <ErrorBanner message={error} />
+      {notice && (
+        <T variant="small" style={{ color: Colors.success }}>
+          {notice}
+        </T>
+      )}
 
       {menu === null ? (
         <Loading />
@@ -196,7 +224,12 @@ function GroceryList() {
             {toBuy.map((l, i) => (
               <View key={l.key}>
                 {i > 0 && <Divider />}
-                <Line line={l} checked={checked.has(l.key)} onToggle={() => toggle(l.key)} />
+                <Line
+                  line={l}
+                  note={l.have ? `${formatIngredient({ name: '', quantity: l.have, unit: l.unit }).trim()} already in the pantry` : undefined}
+                  checked={checked.has(l.key)}
+                  onToggle={() => toggle(l.key)}
+                />
               </View>
             ))}
             {extras.map((e, i) => {
@@ -257,11 +290,14 @@ function GroceryList() {
 
 function Line({
   line,
+  note,
   checked,
   onToggle,
   onRemove,
 }: {
   line: GroceryLine;
+  /** e.g. "2 already in the pantry" */
+  note?: string;
   checked: boolean;
   onToggle: () => void;
   onRemove?: () => void;
@@ -282,7 +318,7 @@ function Line({
         <View style={{ flex: 1 }}>
           <T style={checked ? styles.checkedText : undefined}>{lineText(line)}</T>
           <T variant="small" numberOfLines={1} style={{ color: Colors.textMuted }}>
-            {line.recipes.join(', ')}
+            {[note, line.recipes.join(', ')].filter(Boolean).join(' · ')}
           </T>
         </View>
       </Pressable>
