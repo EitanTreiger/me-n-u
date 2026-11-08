@@ -178,23 +178,23 @@ export async function convertYoutube(url: string) {
   return invokeConvert({ youtubeUrl: url, title: text?.title, description: text?.description, transcript: text?.transcript });
 }
 
-// --- Weekly menu -----------------------------------------------------------
+// --- Weekly menu (per home) -----------------------------------------------
 
-export async function listMenu(groupId: string, week: string): Promise<MenuItem[]> {
+export async function listMenu(homeId: string, week: string): Promise<MenuItem[]> {
   const { data, error } = await supabase
     .from('menu_items')
     .select('*, recipe:recipes(*)')
-    .eq('group_id', groupId)
+    .eq('home_id', homeId)
     .eq('week_start', week)
     .order('created_at');
   if (error) throw error;
   return data as MenuItem[];
 }
 
-export async function addMenuItem(groupId: string, week: string, day: number, meal: Meal, recipeId: string, servings: number) {
+export async function addMenuItem(homeId: string, week: string, day: number, meal: Meal, recipeId: string, servings: number) {
   const { error } = await supabase
     .from('menu_items')
-    .insert({ group_id: groupId, week_start: week, day, meal, recipe_id: recipeId, servings });
+    .insert({ home_id: homeId, week_start: week, day, meal, recipe_id: recipeId, servings });
   if (error) throw error;
 }
 
@@ -207,10 +207,10 @@ export async function removeMenuItem(id: string) {
 
 export type GroceryExtra = { id: string; name: string; quantity: number; unit: string };
 
-export async function listGroceryState(groupId: string, week: string) {
+export async function listGroceryState(homeId: string, week: string) {
   const [checks, extras] = await Promise.all([
-    supabase.from('grocery_checks').select('item_key').eq('group_id', groupId).eq('week_start', week),
-    supabase.from('grocery_extras').select('id, name, quantity, unit').eq('group_id', groupId).eq('week_start', week).order('created_at'),
+    supabase.from('grocery_checks').select('item_key').eq('home_id', homeId).eq('week_start', week),
+    supabase.from('grocery_extras').select('id, name, quantity, unit').eq('home_id', homeId).eq('week_start', week).order('created_at'),
   ]);
   if (checks.error) throw checks.error;
   if (extras.error) throw extras.error;
@@ -220,23 +220,23 @@ export async function listGroceryState(groupId: string, week: string) {
   };
 }
 
-export async function setChecked(groupId: string, week: string, key: string, checked: boolean) {
+export async function setChecked(homeId: string, week: string, key: string, checked: boolean) {
   if (checked) {
-    const { error } = await supabase.from('grocery_checks').upsert({ group_id: groupId, week_start: week, item_key: key });
+    const { error } = await supabase.from('grocery_checks').upsert({ home_id: homeId, week_start: week, item_key: key });
     if (error) throw error;
   } else {
     const { error } = await supabase
       .from('grocery_checks')
       .delete()
-      .eq('group_id', groupId)
+      .eq('home_id', homeId)
       .eq('week_start', week)
       .eq('item_key', key);
     if (error) throw error;
   }
 }
 
-export async function addGroceryExtra(groupId: string, week: string, name: string) {
-  const { error } = await supabase.from('grocery_extras').insert({ group_id: groupId, week_start: week, name: name.trim() });
+export async function addGroceryExtra(homeId: string, week: string, name: string) {
+  const { error } = await supabase.from('grocery_extras').insert({ home_id: homeId, week_start: week, name: name.trim() });
   if (error) throw error;
 }
 

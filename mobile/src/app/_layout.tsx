@@ -70,6 +70,8 @@ function RootNavigator() {
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+      {/* Join links work signed in or out. */}
+      <Stack.Screen name="join/[code]" options={{ headerShown: false }} />
     </Stack>
   );
 }

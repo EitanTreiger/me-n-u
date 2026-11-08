@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { GroupGate } from '@/components/group-gate';
+import { HomeSwitcher } from '@/components/home-switcher';
 import { Screen } from '@/components/screen';
 import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, T } from '@/components/ui';
 import { WeekSwitcher } from '@/components/week-switcher';
@@ -20,21 +21,22 @@ const MEAL_LABEL: Record<Meal, string> = { breakfast: 'Breakfast', lunch: 'Lunch
 function MenuPlanner() {
   const Colors = useColors();
   const styles = useStyles();
-  const { active, isAdmin } = useGroups();
+  const { activeHome, isAdmin } = useGroups();
   const [week, setWeek] = useState(weekStart());
   const [items, setItems] = useState<MenuItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const groupId = active!.id;
+  // Each home has its own weekly menu.
+  const homeId = activeHome!.id;
 
   const load = useCallback(async () => {
     try {
-      setItems(await listMenu(groupId, week));
+      setItems(await listMenu(homeId, week));
       setError(null);
     } catch (e) {
       setError(friendlyError(e));
     }
-  }, [groupId, week]);
+  }, [homeId, week]);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,7 +66,12 @@ function MenuPlanner() {
   return (
     <Screen
       title="Weekly menu"
-      subtitle={isAdmin ? 'You are an admin. Tap + to plan a meal.' : `Planned by the admins of ${active!.name}.`}
+      subtitle={
+        <View style={{ gap: Spacing.xs }}>
+          <HomeSwitcher />
+          <T variant="small">{isAdmin ? 'You are an admin. Tap + to plan a meal.' : 'Planned by the admins.'}</T>
+        </View>
+      }
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -167,7 +174,7 @@ function MenuPlanner() {
 
 export default function MenuTab() {
   return (
-    <GroupGate title="Weekly menu">
+    <GroupGate title="Weekly menu" needsHome>
       <MenuPlanner />
     </GroupGate>
   );

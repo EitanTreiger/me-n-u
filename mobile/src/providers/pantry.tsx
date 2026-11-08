@@ -25,13 +25,13 @@ type PantryState = {
 
 const PantryContext = createContext<PantryState | null>(null);
 
-/** The community's shared pantry. */
-async function fetchPantry(groupId: string | undefined): Promise<PantryItem[]> {
-  if (!groupId) return [];
+/** The home's shared pantry. */
+async function fetchPantry(homeId: string | undefined): Promise<PantryItem[]> {
+  if (!homeId) return [];
   const { data } = await supabase
     .from('pantry_items')
     .select('id, name, quantity, unit, created_at')
-    .eq('group_id', groupId)
+    .eq('home_id', homeId)
     .order('name');
   return (data ?? []).map((r) => ({ ...r, quantity: Number(r.quantity) || 0 }));
 }
@@ -53,18 +53,18 @@ function normalizeEntry(e: Ingredient): { name: string; quantity: number; unit: 
 }
 
 export function PantryProvider({ children }: { children: ReactNode }) {
-  // The pantry belongs to the active community, shared by all its members.
-  const groupId = useGroups().active?.id;
+  // The pantry belongs to the selected home, shared by everyone who uses it.
+  const homeId = useGroups().activeHome?.id;
   const [items, setItems] = useState<PantryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setItems(await fetchPantry(groupId));
-  }, [groupId]);
+    setItems(await fetchPantry(homeId));
+  }, [homeId]);
 
   useEffect(() => {
     let alive = true;
-    fetchPantry(groupId).then((rows) => {
+    fetchPantry(homeId).then((rows) => {
       if (!alive) return;
       setItems(rows);
       setLoading(false);
@@ -72,7 +72,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [groupId]);
+  }, [homeId]);
 
   const value = useMemo<PantryState>(
     () => ({
@@ -85,7 +85,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
           .map((e) => (typeof e === 'string' ? parseIngredientLine(e) : e))
           .filter((e): e is Ingredient => !!e && !!e.name.trim())
           .map(normalizeEntry);
-        if (!groupId) return;
+        if (!homeId) return;
         const inserts: { name: string; quantity: number; unit: string }[] = [];
         const updates: { id: string; quantity: number; unit: string }[] = [];
         for (const e of parsed) {
@@ -110,7 +110,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
           }
         }
         if (inserts.length) {
-          const { error } = await supabase.from('pantry_items').insert(inserts.map((i) => ({ ...i, group_id: groupId })));
+          const { error } = await supabase.from('pantry_items').insert(inserts.map((i) => ({ ...i, home_id: homeId })));
           if (error) throw error;
         }
         for (const u of updates) {
@@ -148,7 +148,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     }),
-    [items, loading, refresh, groupId],
+    [items, loading, refresh, homeId],
   );
 
   return <PantryContext.Provider value={value}>{children}</PantryContext.Provider>;
