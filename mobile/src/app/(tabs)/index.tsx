@@ -10,16 +10,14 @@ import { Button, Chip, EmptyState, ErrorBanner, Icon, Loading, T } from '@/compo
 import { InputText, Radius, Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
 import { listRecipes } from '@/lib/api';
-import { missingIngredients } from '@/lib/ingredients';
 import { consensusScore } from '@/lib/ranking';
 import { friendlyError } from '@/lib/supabase';
 import { useLayout } from '@/hooks/use-layout';
 import { DIETARY_TAGS, type RecipeWithStats } from '@/lib/types';
 import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
-import { usePantry } from '@/providers/pantry';
 
-type Sort = 'top' | 'votes' | 'mine' | 'new' | 'ready';
+type Sort = 'top' | 'votes' | 'mine' | 'new';
 
 const SORTS: {
   key: Sort;
@@ -30,21 +28,19 @@ const SORTS: {
   { key: 'votes', label: 'Most Votes', icon: 'thumbs-up-outline' },
   { key: 'mine', label: 'My recipes', icon: 'person-outline' },
   { key: 'new', label: 'Newest', icon: 'time-outline' },
-  { key: 'ready', label: 'Ready to cook', icon: 'checkmark-circle-outline' },
 ];
 
 function RecipesList() {
   const Colors = useColors();
   const styles = useStyles();
   const { activeHome, isAdmin } = useGroups();
-  const { names: pantry } = usePantry();
   const [recipes, setRecipes] = useState<RecipeWithStats[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('top');
-  // Switched to a home where you're not an admin: votes and the pantry aren't yours to see.
-  if ((sort === 'votes' || sort === 'ready') && !isAdmin) setSort('top');
+  // Switched to a home where you're not an admin: its votes aren't yours to see.
+  if (sort === 'votes' && !isAdmin) setSort('top');
   const [tags, setTags] = useState<string[]>([]);
   const { wide } = useLayout();
   const userId = useAuth().session?.user.id;
@@ -86,15 +82,9 @@ function RecipesList() {
     } else if (sort === 'votes') {
       // Recipes members want on the menu; unvoted ones drop out of this view.
       list = list.filter((r) => r.votes > 0).sort((a, b) => b.votes - a.votes || consensusScore(b.stats) - consensusScore(a.stats));
-    } else if (sort === 'ready') {
-      list = [...list].sort(
-        (a, b) =>
-          missingIngredients(pantry, a.ingredients).length - missingIngredients(pantry, b.ingredients).length ||
-          consensusScore(b.stats) - consensusScore(a.stats),
-      );
     }
     return list;
-  }, [recipes, query, sort, tags, pantry, userId]);
+  }, [recipes, query, sort, tags, userId]);
 
   const toggleTag = (t: string) => setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
@@ -127,8 +117,8 @@ function RecipesList() {
       </View>
 
       <View style={styles.sortRow}>
-        {/* Most Votes (this week's menu votes at this home) and Ready to cook (uses the pantry) are for its admins only. */}
-        {SORTS.filter((s) => (s.key !== 'votes' && s.key !== 'ready') || isAdmin).map((s) => (
+        {/* Most Votes (this week's menu votes at this home) is for its admins only. */}
+        {SORTS.filter((s) => s.key !== 'votes' || isAdmin).map((s) => (
           <Chip key={s.key} label={s.label} icon={s.icon} selected={sort === s.key} onPress={() => setSort(s.key)} />
         ))}
       </View>
@@ -179,7 +169,6 @@ function RecipesList() {
             <View key={r.id} style={{ width: '100%' }}>
               <RecipeCard
                 recipe={r}
-                pantry={isAdmin ? pantry : null}
                 large={wide}
                 showVotes={isAdmin}
                 onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: r.id } })}

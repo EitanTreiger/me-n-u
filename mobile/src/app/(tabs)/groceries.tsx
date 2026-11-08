@@ -20,7 +20,6 @@ import {
 import {
   aggregateIngredients,
   formatIngredient,
-  pantryCoverage,
   scaleIngredients,
   servingFactor,
   tidyAmount,
@@ -31,7 +30,6 @@ import { friendlyError } from '@/lib/supabase';
 import type { MenuItem } from '@/lib/types';
 import { weekLabel, weekStart } from '@/lib/week';
 import { useGroups } from '@/providers/groups';
-import { usePantry } from '@/providers/pantry';
 
 function lineText(line: { name: string; quantity: number; unit: string }) {
   return formatIngredient(tidyAmount(line));
@@ -42,7 +40,6 @@ function GroceryList() {
   const styles = useStyles();
   const params = useLocalSearchParams<{ week?: string }>();
   const { activeHome, isAdmin } = useGroups();
-  const pantry = usePantry();
   const [week, setWeek] = useState(params.week ?? weekStart());
   const [menu, setMenu] = useState<MenuItem[] | null>(null);
   const [checked, setCheckedKeys] = useState<Set<string>>(new Set());
@@ -102,15 +99,7 @@ function GroceryList() {
       ),
     [menu],
   );
-  // Buy what the pantry doesn't have, and the rest of anything it's short of.
-  const toBuy: (GroceryLine & { have?: number })[] = [];
-  const inPantry: GroceryLine[] = [];
-  for (const l of lines) {
-    const cover = pantryCoverage(pantry.items, l);
-    if (cover.status === 'covered') inPantry.push(l);
-    else if (cover.status === 'short') toBuy.push({ ...l, quantity: cover.quantity, have: cover.have });
-    else toBuy.push(l);
-  }
+  const toBuy = lines;
 
   const total = toBuy.length + extras.length;
   const done = toBuy.filter((l) => checked.has(l.key)).length + extras.filter((e) => checked.has(`extra:${e.id}`)).length;
@@ -171,7 +160,7 @@ function GroceryList() {
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
-        await Promise.all([load(), pantry.refresh()]);
+        await load();
         setRefreshing(false);
       }}>
       <WeekSwitcher
@@ -216,17 +205,11 @@ function GroceryList() {
 
           <SectionHeader title={`To buy · ${toBuy.length + extras.length}`} />
           <Card style={styles.list}>
-            {toBuy.length === 0 && extras.length === 0 && (
-              <T variant="small" style={{ padding: Spacing.md }}>
-                The pantry covers everything on the menu.
-              </T>
-            )}
             {toBuy.map((l, i) => (
               <View key={l.key}>
                 {i > 0 && <Divider />}
                 <Line
                   line={l}
-                  note={l.have ? `${formatIngredient({ name: '', quantity: l.have, unit: l.unit }).trim()} already in the pantry` : undefined}
                   checked={checked.has(l.key)}
                   onToggle={() => toggle(l.key)}
                 />
@@ -264,24 +247,6 @@ function GroceryList() {
             </View>
           )}
 
-          {inPantry.length > 0 && (
-            <>
-              <SectionHeader title={`Already in the pantry · ${inPantry.length}`} />
-              <Card style={[styles.list, styles.muted]}>
-                {inPantry.map((l, i) => (
-                  <View key={l.key}>
-                    {i > 0 && <Divider />}
-                    <View style={styles.line}>
-                      <Icon name="basket-outline" size={18} color={Colors.success} />
-                      <View style={{ flex: 1 }}>
-                        <T style={{ color: Colors.textSecondary }}>{lineText(l)}</T>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            </>
-          )}
         </>
       )}
     </Screen>
@@ -296,7 +261,7 @@ function Line({
   onRemove,
 }: {
   line: GroceryLine;
-  /** e.g. "2 already in the pantry" */
+  /** Extra detail shown before the recipe names. */
   note?: string;
   checked: boolean;
   onToggle: () => void;

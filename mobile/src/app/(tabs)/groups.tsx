@@ -87,7 +87,7 @@ export default function HomesTab() {
               const roleText = h.role === 'admin' ? 'You created it (admin)' : h.role === 'acting_admin' ? 'You are an acting admin' : 'You are a member';
               return (
                 <Card key={h.id} style={[styles.homeCard, viewing && styles.homeCardActive]}>
-                  {/* Tap a home to see its menu, groceries and pantry (also in Settings, bottom left). */}
+                  {/* Tap a home to see its menu and groceries (also in Settings, bottom left). */}
                   <Pressable
                     onPress={() => groups.setActiveHome(h.id)}
                     accessibilityRole="button"
@@ -150,11 +150,11 @@ export default function HomesTab() {
           </Card>
           {isOwner ? (
             <T variant="small" style={{ marginTop: Spacing.sm }}>
-              {`You created ${activeHome.name}, so you're its admin. Make someone an acting admin to give them the same access (menu, groceries, pantry, menu votes, deleting recipes); they can't make others admins, and you can undo it any time.`}
+              {`You created ${activeHome.name}, so you're its admin. Make someone an acting admin to give them the same access (menu, groceries, menu votes, deleting recipes); they can't make others admins, and you can undo it any time.`}
             </T>
           ) : isAdmin ? (
             <T variant="small" style={{ marginTop: Spacing.sm }}>
-              {`You're an acting admin of ${activeHome.name}: you plan its menu and grocery list, see its pantry and menu votes. Only its creator can change who's an admin.`}
+              {`You're an acting admin of ${activeHome.name}: you plan its menu and grocery list and see its menu votes. Only its creator can change who's an admin.`}
             </T>
           ) : null}
         </>

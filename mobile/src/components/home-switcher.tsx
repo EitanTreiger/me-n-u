@@ -8,7 +8,7 @@ import { useGroups } from '@/providers/groups';
 import { Divider, Icon, T } from './ui';
 
 /**
- * Which home's menu, groceries and pantry are shown. A pill with the home's
+ * Which home's menu and groceries are shown. A pill with the home's
  * name; tap it to switch between the homes you belong to.
  */
 export function HomeSwitcher() {

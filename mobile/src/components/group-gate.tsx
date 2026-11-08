@@ -15,7 +15,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, Icon, Loading, T, type Ic
 /**
  * Renders children only when the user belongs to a home. Otherwise (right
  * after sign-up, or after leaving their last home) it shows the
- * create-or-join choice in place. `adminOnly` pages (groceries, pantry) are
+ * create-or-join choice in place. `adminOnly` pages (groceries) are
  * for the home's admins; their tabs are hidden from everyone else, and this
  * covers opening them another way (a link, or switching homes).
  */
@@ -79,7 +79,7 @@ export function HomeSetup({ title }: { title: string }) {
       <View style={styles.intro}>
         <T variant="heading">Welcome{displayName ? `, ${displayName}` : ''}!</T>
         <T variant="small">
-          Each home has its own weekly menu, grocery list and pantry. Recipes, ratings and photos are shared by every home.
+          Each home has its own weekly menu and grocery list. Recipes, ratings and photos are shared by every home.
         </T>
       </View>
 
@@ -118,7 +118,7 @@ export function HomeSetup({ title }: { title: string }) {
           ) : (
             <>
               <Field label="Home name (required)" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" maxLength={80} onSubmitEditing={submit} />
-              <T variant="small">{"You'll be its admin: you plan its menu, run its grocery list and pantry, and can make others acting admins."}</T>
+              <T variant="small">{"You'll be its admin: you plan its menu, run its grocery list and can make others acting admins."}</T>
             </>
           )}
           <ErrorBanner message={error} />

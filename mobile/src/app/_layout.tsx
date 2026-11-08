@@ -7,7 +7,6 @@ import { Loading } from '@/components/ui';
 import { AppearanceProvider, useAppearance, useColors } from '@/providers/appearance';
 import { AuthProvider, useAuth } from '@/providers/auth';
 import { GroupsProvider, useGroups } from '@/providers/groups';
-import { PantryProvider } from '@/providers/pantry';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -81,9 +80,7 @@ export default function RootLayout() {
       <Themed>
         <AuthProvider>
           <GroupsProvider>
-            <PantryProvider>
-              <RootNavigator />
-            </PantryProvider>
+            <RootNavigator />
           </GroupsProvider>
         </AuthProvider>
       </Themed>
