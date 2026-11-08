@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -9,17 +10,33 @@ import { useGroups } from '@/providers/groups';
 
 import { Screen } from './screen';
 import { HomePicker } from './home-picker';
-import { Button, Card, ErrorBanner, Field, Icon, Loading, T, type IconName } from './ui';
+import { Button, Card, EmptyState, ErrorBanner, Field, Icon, Loading, T, type IconName } from './ui';
 
 /**
  * Renders children only when the user belongs to a home. Otherwise (right
  * after sign-up, or after leaving their last home) it shows the
- * create-or-join choice in place.
+ * create-or-join choice in place. `adminOnly` pages (groceries, pantry) are
+ * for the home's admins; their tabs are hidden from everyone else, and this
+ * covers opening them another way (a link, or switching homes).
  */
-export function GroupGate({ title, children }: { title: string; children: ReactNode }) {
-  const { activeHome, loading } = useGroups();
+export function GroupGate({ title, children, adminOnly }: { title: string; children: ReactNode; adminOnly?: boolean }) {
+  const { activeHome, isAdmin, loading } = useGroups();
   if (loading) return <Loading />;
   if (!activeHome) return <HomeSetup title={title} />;
+  if (adminOnly && !isAdmin) {
+    return (
+      <Screen title={title}>
+        <Card>
+          <EmptyState
+            icon="lock-closed-outline"
+            title="For admins only"
+            body={`Only the admins of ${activeHome.name} can see its ${title.toLowerCase()}.`}
+            action={<Button title="Go to recipes" onPress={() => router.navigate('/')} />}
+          />
+        </Card>
+      </Screen>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -73,7 +90,7 @@ export function HomeSetup({ title }: { title: string }) {
           <ChoiceCard
             icon="enter-outline"
             title="Join a home"
-            body="Pick your home from the list. You'll be a member: you'll see its menu, grocery list and pantry, and can vote for meals."
+            body="Pick your home from the list. You'll be a member: you'll see its weekly menu, and can vote for meals and rate recipes."
             onPress={() => choose('join')}
           />
           <ChoiceCard
@@ -101,7 +118,7 @@ export function HomeSetup({ title }: { title: string }) {
           ) : (
             <>
               <Field label="Home name (required)" value={name} onChangeText={setName} placeholder="e.g. Maple Street Home" maxLength={80} onSubmitEditing={submit} />
-              <T variant="small">{"You'll be its admin. Only the person who creates a home is its admin."}</T>
+              <T variant="small">{"You'll be its admin: you plan its menu, run its grocery list and pantry, and can make others acting admins."}</T>
             </>
           )}
           <ErrorBanner message={error} />

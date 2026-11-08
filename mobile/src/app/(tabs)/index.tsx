@@ -43,8 +43,8 @@ function RecipesList() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('top');
-  // Switched to a home where you're not an admin: votes aren't yours to see.
-  if (sort === 'votes' && !isAdmin) setSort('top');
+  // Switched to a home where you're not an admin: votes and the pantry aren't yours to see.
+  if ((sort === 'votes' || sort === 'ready') && !isAdmin) setSort('top');
   const [tags, setTags] = useState<string[]>([]);
   const { wide } = useLayout();
   const userId = useAuth().session?.user.id;
@@ -127,8 +127,8 @@ function RecipesList() {
       </View>
 
       <View style={styles.sortRow}>
-        {/* Most Votes: this week's menu votes at this home, for its admins only. */}
-        {SORTS.filter((s) => s.key !== 'votes' || isAdmin).map((s) => (
+        {/* Most Votes (this week's menu votes at this home) and Ready to cook (uses the pantry) are for its admins only. */}
+        {SORTS.filter((s) => (s.key !== 'votes' && s.key !== 'ready') || isAdmin).map((s) => (
           <Chip key={s.key} label={s.label} icon={s.icon} selected={sort === s.key} onPress={() => setSort(s.key)} />
         ))}
       </View>
@@ -179,7 +179,7 @@ function RecipesList() {
             <View key={r.id} style={{ width: '100%' }}>
               <RecipeCard
                 recipe={r}
-                pantry={pantry}
+                pantry={isAdmin ? pantry : null}
                 large={wide}
                 showVotes={isAdmin}
                 onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: r.id } })}

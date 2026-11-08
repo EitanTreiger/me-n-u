@@ -329,7 +329,7 @@ function Line({
 
 export default function GroceriesTab() {
   return (
-    <GroupGate title="Groceries">
+    <GroupGate title="Groceries" adminOnly>
       <GroceryList />
     </GroupGate>
   );

@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RecipeGallery } from '@/components/recipe-gallery';
-import { Button, Card, Chip, Divider, ErrorBanner, Icon, IconButton, Loading, SectionHeader, Stars, Stepper, T } from '@/components/ui';
+import { Button, Card, Chip, Divider, ErrorBanner, Icon, Loading, SectionHeader, Stars, Stepper, T } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { makeStyles, useColors } from '@/providers/appearance';
 import { useLayout } from '@/hooks/use-layout';
@@ -22,7 +23,6 @@ import { youtubeThumb } from '@/lib/ranking';
 import { friendlyError, photoUrl } from '@/lib/supabase';
 import type { RecipeWithStats } from '@/lib/types';
 import { formatTimestamp, youtubeAt } from '@/lib/youtube';
-import { useAuth } from '@/providers/auth';
 import { useGroups } from '@/providers/groups';
 import { usePantry } from '@/providers/pantry';
 
@@ -41,8 +41,7 @@ export default function RecipeDetail() {
   const Colors = useColors();
   const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isAdmin, activeHome } = useGroups();
-  const userId = useAuth().session?.user.id;
+  const { isAdmin, isAnyAdmin, activeHome } = useGroups();
   // Menu votes are per home; recipes and ratings are shared by every home.
   const homeId = activeHome?.id;
   const pantry = usePantry();
@@ -80,12 +79,22 @@ export default function RecipeDetail() {
 
   if (error && !recipe) {
     return (
-      <View style={{ padding: Spacing.lg }}>
-        <ErrorBanner message={error} />
-      </View>
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <TopButtons />
+        <View style={{ padding: Spacing.lg }}>
+          <ErrorBanner message={error} />
+        </View>
+      </SafeAreaView>
     );
   }
-  if (!recipe) return <Loading />;
+  if (!recipe) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <TopButtons />
+        <Loading />
+      </SafeAreaView>
+    );
+  }
 
   const image = photoUrl(recipe.photo_path) ?? recipe.image_url ?? youtubeThumb(recipe.video_url);
   const base = recipe.servings ?? baseGuess;
@@ -93,8 +102,8 @@ export default function RecipeDetail() {
   const factor = servingFactor(base, cookingFor);
   const ingredients = scaleIngredients(recipe.ingredients, factor);
   const missing = ingredients.filter((i) => !pantryHas(pantry.names, i.name));
-  // Recipes are shared by every home: only the person who added one can delete it (the database enforces this too).
-  const canDelete = recipe.author_id === userId;
+  // Recipes are shared by every home: admins (of any home) can delete them; members can't.
+  const canDelete = isAnyAdmin;
   const times = recipe.video_url && recipe.step_timestamps?.length === recipe.steps.length ? recipe.step_timestamps : null;
 
   async function refreshRecipe() {
@@ -334,7 +343,7 @@ export default function RecipeDetail() {
       <SectionHeader
         title={`Ingredients · ${recipe.ingredients.length}${factor !== 1 ? ` · for ${cookingFor}` : ''}`}
         action={
-          missing.length > 0 ? (
+          !isAdmin ? undefined : missing.length > 0 ? (
             <Chip label={`${missing.length} to buy`} tone="warning" icon="cart-outline" />
           ) : recipe.ingredients.length > 0 ? (
             <Chip label="All in your pantry" tone="success" icon="checkmark-circle" />
@@ -348,17 +357,23 @@ export default function RecipeDetail() {
             <View key={`${ing.name}-${i}`}>
               {i > 0 && <Divider />}
               <View style={styles.ingredient}>
-                <Icon name={have ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={have ? Colors.success : Colors.warning} />
+                {isAdmin ? (
+                  <Icon name={have ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={have ? Colors.success : Colors.warning} />
+                ) : (
+                  <Icon name="ellipse" size={8} color={Colors.textMuted} />
+                )}
                 <T style={{ flex: 1 }}>{formatIngredient(ing)}</T>
-                <T variant="small" style={{ color: have ? Colors.success : Colors.warning }}>
-                  {have ? 'Have' : 'Need'}
-                </T>
+                {isAdmin && (
+                  <T variant="small" style={{ color: have ? Colors.success : Colors.warning }}>
+                    {have ? 'Have' : 'Need'}
+                  </T>
+                )}
               </View>
             </View>
           );
         })}
       </Card>
-      {missing.length > 0 && (
+      {isAdmin && missing.length > 0 && (
         <Button
           title="I've got these now — add to my pantry"
           variant="ghost"
@@ -405,36 +420,28 @@ export default function RecipeDetail() {
   );
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerRight: canDelete
-            ? () => (
-                <IconButton
-                  name="trash-outline"
-                  label="Delete recipe"
-                  color={Colors.danger}
-                  onPress={() =>
-                    confirm(
-                      `Delete "${recipe.title}"?`,
-                      'Are you sure? It will be removed for everyone in every home, including from weekly menus, ratings, votes and its gallery. This cannot be undone.',
-                      async () => {
+    <SafeAreaView edges={['top']} style={styles.safe}>
+      <ScrollView contentContainerStyle={[styles.content, { maxWidth: contentWidth }]}>
+        <TopButtons
+          onDelete={
+            // Only admins delete recipes (the database enforces this too).
+            canDelete
+              ? () =>
+                  confirm(
+                    `Delete "${recipe.title}"?`,
+                    'Are you sure? It will be removed for everyone in every home, including from weekly menus, ratings, votes and its gallery. This cannot be undone.',
+                    async () => {
                       try {
                         await deleteRecipe(recipe.id);
-                        router.back();
+                        goBack();
                       } catch (e) {
                         setError(friendlyError(e));
                       }
-                      },
-                    )
-                  }
-                />
-              )
-            : undefined,
-        }}
-      />
-      <ScrollView contentContainerStyle={[styles.content, { maxWidth: contentWidth }]}>
+                    },
+                  )
+              : undefined
+          }
+        />
         {wide ? (
           <View style={styles.columns}>
             <View style={styles.column}>
@@ -456,7 +463,41 @@ export default function RecipeDetail() {
         )}
         <RecipeGallery recipeId={recipe.id} />
       </ScrollView>
-    </>
+    </SafeAreaView>
+  );
+}
+
+/** Back to the previous page, or to Recipes when the recipe was opened directly. */
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+}
+
+/** Round Back (and, for admins, Delete) buttons at the top of the recipe, in place of a header bar. */
+function TopButtons({ onDelete }: { onDelete?: () => void }) {
+  const Colors = useColors();
+  const styles = useStyles();
+  return (
+    <View style={styles.topButtons}>
+      <Pressable
+        onPress={goBack}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+        hitSlop={6}
+        style={({ pressed }) => [styles.roundButton, pressed && { opacity: 0.6 }]}>
+        <Icon name="chevron-back" size={22} color={Colors.text} />
+      </Pressable>
+      {onDelete && (
+        <Pressable
+          onPress={onDelete}
+          accessibilityRole="button"
+          accessibilityLabel="Delete recipe"
+          hitSlop={6}
+          style={({ pressed }) => [styles.roundButton, pressed && { opacity: 0.6 }]}>
+          <Icon name="trash-outline" size={20} color={Colors.danger} />
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -474,6 +515,18 @@ function Fact({ icon, label }: { icon: 'time-outline' | 'people-outline' | 'flam
 }
 
 const useStyles = makeStyles((Colors) => ({
+  safe: { flex: 1, backgroundColor: Colors.background },
+  topButtons: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md },
+  roundButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
   content: {
     padding: Spacing.lg,
     paddingBottom: Spacing.xxl * 2,

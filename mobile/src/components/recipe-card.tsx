@@ -53,7 +53,8 @@ export function RecipeCard({
   showVotes = false,
 }: {
   recipe: RecipeWithStats;
-  pantry: string[];
+  /** The home's pantry, to show what's missing. Admins only (members can't see the pantry). */
+  pantry?: string[] | null;
   onPress: () => void;
   /** Bigger photo and text, for computers. */
   large?: boolean;
@@ -62,7 +63,7 @@ export function RecipeCard({
 }) {
   const Colors = useColors();
   const styles = useStyles();
-  const missing = missingIngredients(pantry, recipe.ingredients);
+  const missing = pantry ? missingIngredients(pantry, recipe.ingredients) : [];
   const total = recipe.ingredients.length;
   const ready = total > 0 && missing.length === 0;
   const cuisine = recipeCuisine(recipe.description);
@@ -113,7 +114,7 @@ export function RecipeCard({
           )}
         </View>
 
-        {total > 0 && (
+        {!!pantry && total > 0 && (
           <View style={styles.chips}>
             {ready ? (
               <Chip label="You have everything" tone="success" icon="checkmark-circle" />

@@ -62,7 +62,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={!!session && inHome}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="recipe/[id]" options={{ title: '' }} />
+        <Stack.Screen name="recipe/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/new" options={{ title: 'New recipe', presentation: 'modal' }} />
         <Stack.Screen name="menu-pick" options={{ title: 'Add to menu', presentation: 'modal' }} />
       </Stack.Protected>

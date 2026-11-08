@@ -11,13 +11,22 @@ export type Group = {
 
 export type Membership = Group & { role: Role };
 
-/** A home the user belongs to: it has its own menu, groceries, pantry and admin. */
+/**
+ * Someone's role in a home: `admin` created it; `acting_admin` was made an
+ * admin by the creator (same access, but can't make others admins).
+ */
+export type HomeRole = 'admin' | 'acting_admin' | 'member';
+
+/** Admin access in a home: the creator or an acting admin. */
+export const isAdminRole = (role: HomeRole | undefined) => role === 'admin' || role === 'acting_admin';
+
+/** A home the user belongs to: it has its own menu, groceries, pantry and admins. */
 export type Home = {
   id: string;
   name: string;
   created_at: string;
   /** The user's role in this home. */
-  role: Role;
+  role: HomeRole;
 };
 
 export type Ingredient = {
