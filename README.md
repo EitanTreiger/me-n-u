@@ -35,6 +35,7 @@ Design: minimal and flat, with `#B9D1BD` sage as the primary colour and no gradi
      - [`20261107090000_home_access_and_votes.sql`](supabase/migrations/20261107090000_home_access_and_votes.sql) limits members to their own home and makes menu votes per home.
      - [`20261107100000_homes_first.sql`](supabase/migrations/20261107100000_homes_first.sql) makes homes the top level: admins per home, recipes and ratings shared by every home, and the recipe gallery.
      - [`20261107110000_join_from_list_creator_admin.sql`](supabase/migrations/20261107110000_join_from_list_creator_admin.sql) lets people pick a home to join from a list and makes each home's creator its only admin.
+     - [`20261107120000_creator_can_see_home.sql`](supabase/migrations/20261107120000_creator_can_see_home.sql) fixes the row-level security error when creating a home.
 3. For quick testing, go to **Authentication → Providers → Email** and turn off **Confirm email** so new accounts can sign in right away.
 
 ### 2. Recipe converter (photo / YouTube → text)
